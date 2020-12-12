@@ -33,7 +33,7 @@ struct RPCSig{
 	uint8 v;
 	bytes32 r;
 	bytes32 s;
-    }
+}
     
 /// Domain struct for sig verification
 struct EIP712Domain {
@@ -41,7 +41,7 @@ struct EIP712Domain {
 	string  version;
 	uint256 chainId;
 	address verifyingContract;
-    }
+}
     
 /// Order structure used for maker signature verification (signed off-chain)	
 struct makerOrder {
@@ -55,7 +55,7 @@ struct makerOrder {
 	uint256 makerNonce;
 	uint256 expiryTime;
 	bytes32 makerOrderKey;
-    }
+}
     
 /// Order structure for maker mapping
 struct activeMakerOrder {
@@ -70,7 +70,7 @@ struct activeMakerOrder {
 	uint256 initialRate;
 	uint256 expiryTime;
 	bytes32 makerOrderKey;
-    }
+}
     
 /// Order structure for taker mapping    
 struct activeTakerOrder {
@@ -140,7 +140,7 @@ event Cancelled(
 
 /// Event on taker order release
 event orderReleased(
-    bytes32 makerOrderKey,
+	bytes32 makerOrderKey,
 	bytes32 takerOrderKey
 );
     
