@@ -26,14 +26,16 @@ contract CEth {
 	function exchangeRateCurrent() external returns (uint);
 }
 
-contract DefiHedge {
-	
+contract Swivel {
+
+/// Signature struct 
 struct RPCSig{
 	uint8 v;
 	bytes32 r;
 	bytes32 s;
     }
     
+/// Domain struct for sig verification
 struct EIP712Domain {
 	string  name;
 	string  version;
@@ -41,7 +43,7 @@ struct EIP712Domain {
 	address verifyingContract;
     }
     
-///Order structure used for maker signature verification (signed off-chain)	
+/// Order structure used for maker signature verification (signed off-chain)	
 struct makerOrder {
 	address maker;
 	uint256 side;
@@ -55,7 +57,7 @@ struct makerOrder {
 	bytes32 makerOrderKey;
     }
     
-///Order structure for orders maker mapping
+/// Order structure for maker mapping
 struct activeMakerOrder {
 	address maker;
 	uint256 side;
@@ -70,7 +72,7 @@ struct activeMakerOrder {
 	bytes32 makerOrderKey;
     }
     
-    
+/// Order structure for taker mapping    
 struct activeTakerOrder {
 	address maker;
 	address taker;
@@ -115,8 +117,10 @@ mapping (bytes32 => uint256) public filled;
 /// Whether the order was cancelled.
 /// @param Order hash
 mapping (bytes32 => bool) public cancelled;
-    
-event newLockedOrder(
+
+
+/// Event on order/agreement activation
+event newActiveOrder(
 	address maker,
 	address taker,
 	uint256 side,
@@ -128,11 +132,13 @@ event newLockedOrder(
 	bytes32 makerOrderKey,
 	bytes32 takerOrderKey
 );
-    
+
+/// Event on maker order cancellation
 event Cancelled(
 	bytes32 makerOrderKey
 );
-        
+
+/// Event on taker order release
 event orderReleased(
     bytes32 makerOrderKey,
 	bytes32 takerOrderKey
@@ -143,7 +149,7 @@ using SafeMath for uint;
 
 constructor () public {
 	DOMAIN_SEPARATOR = hashDomain(EIP712Domain({
-		name: "DefiHedge",
+		name: "Swivel",
 		version: '1',
 		chainId: 3,
 		verifyingContract: 0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC
@@ -152,15 +158,23 @@ constructor () public {
     
 bytes32 DOMAIN_SEPARATOR;
     
-// Offer + EIP Domain Hash Schema
+    
+/// EIP Domain Hash Schema
 bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
 	"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
 );
 
+
+/// To change once order parameters are finalized
+/// Offer Hash Schema
 bytes32 constant OFFER_TYPEHASH = keccak256(
 	"Offer(address maker,address taker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 principal)"
 );
-    
+
+
+/// EIP Domain Hash Function
+/// @param
+/// eip712Domain: EIP-712 Domain information provided in constructor
 function hashDomain(EIP712Domain memory eip712Domain) internal pure returns (bytes32) {
 	return keccak256(abi.encode(
 		EIP712DOMAIN_TYPEHASH,
@@ -170,7 +184,11 @@ function hashDomain(EIP712Domain memory eip712Domain) internal pure returns (byt
 		eip712Domain.verifyingContract
         ));
 }
-    
+
+
+/// Order Hash Function
+/// @param
+/// _order: makerOrder struct
 function hashOrder(makerOrder memory _order)private pure returns(bytes32){
 	return keccak256(abi.encode(
 		OFFER_TYPEHASH,
@@ -209,10 +227,48 @@ returns (address maker, address taker, uint256 side, address tokenAddress, uint2
 }
     
 	
-///Settle an entire maker order's volume
-///@param
-///_makerOrder: maker's order
-///bytes32: off-chain key generated as keccak hash of User + time + nonce
+/// Fill the entirety of a maker order's volume
+/// @param
+/// _makerOrder: maker's order 
+/// takerOrderKey: off-chain key generated as keccak hash of User + time + nonce
+/// makerSignature:signature associated with order param
+function fillOffer(makerOrder memory _makerOrder, bytes32 takerOrderKey,bytes memory makerSignature) 	public returns (uint256){
+	    
+	// Check if order already partially filled
+	require(orderMapping[_makerOrder.makerOrderKey].state != 1, "Order Already Partial/Fully Filled");
+
+	// Check if order has been cancelled
+	require(cancelled[_makerOrder.makerOrderKey]==false, "Order Has Been Cancelled");
+
+	// Check if order has already expired
+	require(orderMapping[_makerOrder.makerOrderKey].expiryTime >= now, "Order Has Expired");
+
+
+	// Parse signature into R,S,V                        
+	RPCSig memory RPCsig = signatureRPC(makerSignature);
+
+	// Validate offer signature & ensure it was created by maker
+	require(_makerOrder.maker == ecrecover(
+	keccak256(abi.encodePacked(
+			"\x19\x01",
+			DOMAIN_SEPARATOR,
+			hashOrder(_makerOrder)
+			)),
+			RPCsig.v,
+			RPCsig.r,
+			RPCsig.s), 
+	"Invalid Signature");
+
+	// Settle Response
+	orderSettle(_makerOrder,takerOrderKey);
+
+}
+
+
+/// Settle an entire maker order's volume
+/// @param
+/// _makerOrder: maker's order
+/// bytes32: off-chain key generated as keccak hash of User + time + nonce
 function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) private returns (bool){
 	    
 	    
@@ -233,7 +289,7 @@ function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) priva
 		require(underlying.transferFrom(msg.sender, address(this), _makerOrder.principal), "Transfer Failed!");
 	}
     	    
-	// Mint CToken from DefiHedge contract
+	// Mint CToken from Swivel contract
 	mintCToken(_makerOrder.tokenAddress,_makerOrder.interest.add(_makerOrder.principal));
             
 	// Instantiate makerOrder
@@ -274,50 +330,13 @@ function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) priva
 	// Push taker order to a list mapped to a given maker's order
 	takerListMapping[_makerOrder.makerOrderKey].push(takerOrderKey);
 	    
-	emit newLockedOrder(_activeTakerOrder.maker,msg.sender,_activeTakerOrder.side,_activeTakerOrder.tokenAddress,
+	emit newActiveOrder(_activeTakerOrder.maker,msg.sender,_activeTakerOrder.side,_activeTakerOrder.tokenAddress,
 	_activeTakerOrder.duration,_activeTakerOrder.rate,_activeTakerOrder.interest,_activeTakerOrder.principal,_makerOrder.makerOrderKey,takerOrderKey);
     	    
 	return true;
 }
-	
-///Fill the entirety of a maker order's volume
-/// @param
-/// _makerOrder: maker's order 
-/// takerOrderKey: off-chain key generated as keccak hash of User + time + nonce
-/// makerSignature:signature associated with order param
-function fillOffer(makerOrder memory _makerOrder, bytes32 takerOrderKey,bytes memory makerSignature) 	public returns (uint256){
-	    
-	//Check if order already partially filled
-	require(orderMapping[_makerOrder.makerOrderKey].state != 1, "Order Already Partial/Fully Filled");
-
-	//Check if order has been cancelled
-	require(cancelled[_makerOrder.makerOrderKey]==false, "Order Has Been Cancelled");
-
-	//Check if order has already expired
-	require(orderMapping[_makerOrder.makerOrderKey].expiryTime >= now, "Order Has Expired");
 
 
-	// Parse signature into R,S,V                        
-	RPCSig memory RPCsig = signatureRPC(makerSignature);
-
-	// Validate offer signature & ensure it was created by maker
-	require(_makerOrder.maker == ecrecover(
-	keccak256(abi.encodePacked(
-			"\x19\x01",
-			DOMAIN_SEPARATOR,
-			hashOrder(_makerOrder)
-			)),
-			RPCsig.v,
-			RPCsig.r,
-			RPCsig.s), 
-	"Invalid Signature");
-
-	// Settle Response
-	orderSettle(_makerOrder,takerOrderKey);
-
-}
-	
-	
 /// @param
 /// _makerOrder: maker's order 
 /// takerVolume: amount of currency being taken
@@ -327,10 +346,10 @@ function fillOffer(makerOrder memory _makerOrder, bytes32 takerOrderKey,bytes me
 function partialFillOffer(makerOrder memory _makerOrder,uint256 takerVolume, bytes32 takerOrderKey, bytes memory makerSignature ) public returns (uint256){
 
 
-	//Check if order has been cancelled
+	// Check if order has been cancelled
 	require(cancelled[_makerOrder.makerOrderKey]==false, "Order Has Been Cancelled");
 
-	//Check if order has already expired
+	// Check if order has already expired
 	require(_makerOrder.expiryTime >= now, "Order Has Expired");
 
 	// Parse signature into R,S,V                        
@@ -355,11 +374,11 @@ function partialFillOffer(makerOrder memory _makerOrder,uint256 takerVolume, byt
 }
     
     
-///Settle part of a maker order's volume
-///@param
-///_makerOrder: makers order to fill
-///takerVolume: amount of currency being taken
-///takerOrderKey: off-chain key generated as keccak hash of User + time + nonce
+/// Settle part of a maker order's volume
+/// @param
+/// _makerOrder: makers order to fill
+/// takerVolume: amount of currency being taken
+/// takerOrderKey: off-chain key generated as keccak hash of User + time + nonce
 function partialOrderSettle(makerOrder memory _makerOrder,uint256 takerVolume, bytes32 takerOrderKey) private returns (bool){
 
 	activeMakerOrder memory _activeMakerOrder;
@@ -368,35 +387,35 @@ function partialOrderSettle(makerOrder memory _makerOrder,uint256 takerVolume, b
 	CErc20 cToken = CErc20(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C); //DAI cToken Address
 
 
-	//If order is fixed-side, ensure volume is less than expected interest
+	// If order is fixed-side, ensure volume is less than expected interest
 	if (_makerOrder.side == 0) {
 
 		require (takerVolume <= (_makerOrder.interest), "Taker Volume > Maker");
 
-		// if order has already been partially filled
+		// If order has already been partially filled
 		if (orderMapping[_makerOrder.makerOrderKey].state != 0) {
 		
 			require (takerVolume <= (_makerOrder.interest - filled[_makerOrder.makerOrderKey]), "Taker Volume > Available");
 			
 		}
-		//calculate taker % of total maker order and set opposing param 
+		// Calculate taker % of total maker order and set opposing param 
 		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_makerOrder.interest)).div(100000000000000000000000000);
 		_activeTakerOrder.principal=_makerOrder.principal.mul(orderRatio);
 		_activeTakerOrder.interest=takerVolume;
 	}
 
-	//If order is floating-side, ensure volume is less than expected principal
+	// If order is floating-side, ensure volume is less than expected principal
 	if (_makerOrder.side == 1) {
 
 		require (takerVolume <= (_makerOrder.principal), "Taker Volume > Maker");
 
-		// if order has already been partially filled
+		// If order has already been partially filled
 		if (orderMapping[_makerOrder.makerOrderKey].state != 0) {
 
 		require (takerVolume <= (_makerOrder.principal - filled[_makerOrder.makerOrderKey]), "Taker Volume > Available");
 		}
 		
-		//calculate taker % of total maker order and set opposing param 
+		// Calculate taker % of total maker order and set opposing param 
 		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_makerOrder.principal)).div(100000000000000000000000000);
 		_activeTakerOrder.interest= _makerOrder.interest.mul(orderRatio);
 		_activeTakerOrder.principal=takerVolume;
@@ -414,7 +433,7 @@ function partialOrderSettle(makerOrder memory _makerOrder,uint256 takerVolume, b
 		require(underlying.transferFrom(msg.sender, address(this), _activeTakerOrder.principal), "Transfer Failed!");
 	}
 
-	// Mint CToken from DefiHedge contract
+	// Mint CToken from Swivel contract
 	mintCToken(_activeTakerOrder.tokenAddress,_activeTakerOrder.interest.add(_activeTakerOrder.principal));
 
 
@@ -425,9 +444,9 @@ function partialOrderSettle(makerOrder memory _makerOrder,uint256 takerVolume, b
 	_activeTakerOrder.tokenAddress=_makerOrder.tokenAddress;
 	_activeTakerOrder.duration=_makerOrder.duration;
 	_activeTakerOrder.rate=_makerOrder.rate;
-	_activeTakerOrder.state = 1;  /// Set state to active
-	_activeTakerOrder.lockTime = now.add(_activeTakerOrder.duration); /// Set locktime
-	_activeTakerOrder.initialRate = cToken.exchangeRateCurrent();  /// Get initial exchange rate
+	_activeTakerOrder.state = 1;  // Set state to active
+	_activeTakerOrder.lockTime = now.add(_activeTakerOrder.duration); // Set locktime
+	_activeTakerOrder.initialRate = cToken.exchangeRateCurrent();  // Get initial exchange rate
 	_activeTakerOrder.takerOrderKey=takerOrderKey;
 	
 	takerMapping[_makerOrder.makerOrderKey][_activeTakerOrder.takerOrderKey]= _activeTakerOrder;
@@ -452,10 +471,10 @@ function partialOrderSettle(makerOrder memory _makerOrder,uint256 takerVolume, b
 	}
 
 
-	//push makerOrderKey to general order list (for testing)
+	// Push makerOrderKey to general order list (for testing)
 	makerList.push(_makerOrder.makerOrderKey);
 
-	//push takerOrderKey to takerOrderList nested in mapping
+	// Push takerOrderKey to takerOrderList nested in mapping
 	takerListMapping[_makerOrder.makerOrderKey].push(_activeTakerOrder.takerOrderKey);
 
 
@@ -467,11 +486,12 @@ function partialOrderSettle(makerOrder memory _makerOrder,uint256 takerVolume, b
 	return true;	    	    
 }
     
-///Cancel an order
-///@param
-///_makerOrder: maker's order
-///makerOrderKey: off-chain key generated as keccak hash of User + time + nonce
-///makerSignature: maker's unseparated signature
+    
+/// Cancel an order
+/// @param
+/// _makerOrder: maker's order
+/// makerOrderKey: off-chain key generated as keccak hash of User + time + nonce
+/// makerSignature: maker's unseparated signature
 function cancelOrder(makerOrder memory _makerOrder, bytes32 makerOrderKey, bytes memory makerSignature) public returns(bool){
 
 	// Parse signature into R,S,V                        
@@ -497,9 +517,9 @@ function cancelOrder(makerOrder memory _makerOrder, bytes32 makerOrderKey, bytes
     
     
 /// Release an Erc bond once if term completed
-///@param
-///makerOrderKey: off-chain key generated as keccak hash of User + time + nonce
-///takerOrderKey: off-chain key generated as keccak hash of User + time + nonce
+/// @param
+/// makerOrderKey: off-chain key generated as keccak hash of User + time + nonce
+/// takerOrderKey: off-chain key generated as keccak hash of User + time + nonce
 function releaseErcOrder(bytes32 makerOrderKey, bytes32 takerOrderKey)
 public
 returns(uint256){
@@ -625,7 +645,11 @@ returns(uint256){
 	return(orderMapping[makerOrderKey].state);				
 }
 	
+	
 /// Mint cToken
+/// @param
+/// _erc20Contract: Address of ERC token used in minting
+/// __numTokensToSupply: Number of tokens to mint with
 function mintCToken(
 address _erc20Contract,
 uint _numTokensToSupply) 
@@ -644,13 +668,20 @@ internal returns (uint) {
 	return mintResult;
 }
     	    
+    	    
 /// Redeem cToken
+/// @param
+/// _cErc20Contract: Address of cERC token to redeem
+/// __numTokensToRedeem: Number of underlying tokens to redeem
 function redeemCToken(
 address _cErc20Contract, uint _numTokensToRedeem) internal {
 CErc20(_cErc20Contract).redeemUnderlying(_numTokensToRedeem);
 }
 	
-// Splits signature into RSV
+	
+/// Splits signature into RSV
+/// @param
+/// sig: maker signature
 function signatureRPC(bytes memory sig)internal pure returns (RPCSig memory RPCsig){
 	bytes32 r;
 	bytes32 s;
