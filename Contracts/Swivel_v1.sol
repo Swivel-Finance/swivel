@@ -336,13 +336,12 @@ function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) priva
 	return true;
 }
 
-
+/// Fill partial maker order 
 /// @param
 /// _makerOrder: maker's order 
 /// takerVolume: amount of currency being taken
 /// takerOrderKey: off-chain key generated as keccak hash of User + time + nonce
 /// makerSignature: signature associated with order param
-/// Fill partial maker order 
 function partialFillOffer(makerOrder memory _makerOrder,uint256 takerVolume, bytes32 takerOrderKey, bytes memory makerSignature ) public returns (uint256){
 
 
