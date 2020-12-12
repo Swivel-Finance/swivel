@@ -217,13 +217,12 @@ function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) priva
 	    
 	    
 	activeMakerOrder memory _activeMakerOrder;
-	    
 	activeTakerOrder memory _activeTakerOrder;
 	    
 	CErc20 cToken = CErc20(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C); //DAI cToken Address
 
 	// Check trades side
-	// Transfers funds to DefiHedge contract
+	// Transfers funds to Swivel contract
 	Erc20 underlying = Erc20(_makerOrder.tokenAddress);
 	if (_makerOrder.side == 0) {
 		require(underlying.transferFrom(_makerOrder.maker, address(this), _makerOrder.principal), "Transfer Failed!");
@@ -265,14 +264,14 @@ function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) priva
 	_activeTakerOrder.takerOrderKey= takerOrderKey;
     	    
     	        
-    	    
+    // Store maker order
 	orderMapping[_makerOrder.makerOrderKey] = _activeMakerOrder;
-    	    
+    // Store taker order	    
 	takerMapping[_makerOrder.makerOrderKey][takerOrderKey]= _activeTakerOrder;
     	    
-	    
+	// Push maker order to larger list (unnecessary)
 	makerList.push(_makerOrder.makerOrderKey);
-	    
+	// Push taker order to a list mapped to a given maker's order
 	takerListMapping[_makerOrder.makerOrderKey].push(takerOrderKey);
 	    
 	emit newLockedOrder(_activeTakerOrder.maker,msg.sender,_activeTakerOrder.side,_activeTakerOrder.tokenAddress,
@@ -404,7 +403,7 @@ function partialOrderSettle(makerOrder memory _makerOrder,uint256 takerVolume, b
 	}
 
 	// Check order side
-	// Transfers funds to DefiHedge contract
+	// Transfers funds to Swivel contract
 	Erc20 underlying = Erc20(_activeTakerOrder.tokenAddress);
 	if (_activeTakerOrder.side == 0) {
 		require(underlying.transferFrom(_activeTakerOrder.maker, address(this), _activeTakerOrder.principal), "Transfer Failed!");
@@ -460,6 +459,11 @@ function partialOrderSettle(makerOrder memory _makerOrder,uint256 takerVolume, b
 	takerListMapping[_makerOrder.makerOrderKey].push(_activeTakerOrder.takerOrderKey);
 
 
+
+    /// Stack to deep, need to remove variables
+    /// emit newLockedOrder(_activeTakerOrder.maker,_activeTakerOrder.taker,_activeTakerOrder.side,_activeTakerOrder.tokenAddress,_activeTakerOrder.duration,_activeTakerOrder.rate,_activeTakerOrder.interest,
+    ///_activeTakerOrder.principal,_makerOrder.makerOrderKey,_activeTakerOrder.takerOrderKey);
+
 	return true;	    	    
 }
     
@@ -485,7 +489,7 @@ function cancelOrder(makerOrder memory _makerOrder, bytes32 makerOrderKey, bytes
 		RPCsig.s), 
 	"Invalid Signature");
 
-	cancelled[makerOrderKey]== true;
+	cancelled[makerOrderKey] = true;
 
 
 	return true;
