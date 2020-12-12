@@ -40,7 +40,8 @@ struct EIP712Domain {
 	uint256 chainId;
 	address verifyingContract;
     }
-	
+    
+///Order structure used for maker signature verification (signed off-chain)	
 struct makerOrder {
 	address maker;
 	uint256 side;
@@ -48,12 +49,13 @@ struct makerOrder {
 	uint256 duration;
 	uint256 rate;
 	uint256 interest;
-	uint256 base;
+	uint256 principal;
 	uint256 makerNonce;
 	uint256 expiryTime;
 	bytes32 makerOrderKey;
     }
     
+///Order structure for orders maker mapping
 struct activeMakerOrder {
 	address maker;
 	uint256 side;
@@ -61,12 +63,11 @@ struct activeMakerOrder {
 	uint256 duration;
 	uint256 rate;
 	uint256 interest;
-	uint256 base;
-	uint256 makerNonce;
-	bytes32 orderKey;
+	uint256 principal;
 	uint256 state;
 	uint256 initialRate;
 	uint256 expiryTime;
+	bytes32 makerOrderKey;
     }
     
     
@@ -78,8 +79,7 @@ struct activeTakerOrder {
 	uint256 duration;
 	uint256 rate;
 	uint256 interest;
-	uint256 base;
-	uint256 makerNonce;
+	uint256 principal;
 	uint256 state;
 	uint256 lockTime;
 	uint256 initialRate;
@@ -124,17 +124,18 @@ event newLockedOrder(
 	uint256 duration,
 	uint256 rate,
 	uint256 interest,
-	uint256 base,
+	uint256 principal,
 	bytes32 makerOrderKey,
 	bytes32 takerOrderKey
 );
     
 event Cancelled(
-	bytes32 orderKey
+	bytes32 makerOrderKey
 );
         
 event orderReleased(
-	bytes32 orderKey
+    bytes32 makerOrderKey,
+	bytes32 takerOrderKey
 );
     
 
@@ -157,7 +158,7 @@ bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
 );
 
 bytes32 constant OFFER_TYPEHASH = keccak256(
-	"Offer(address maker,address taker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 base)"
+	"Offer(address maker,address taker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 principal)"
 );
     
 function hashDomain(EIP712Domain memory eip712Domain) internal pure returns (bytes32) {
@@ -179,7 +180,7 @@ function hashOrder(makerOrder memory _order)private pure returns(bytes32){
 		_order.duration,
 		_order.rate,
 		_order.interest,
-		_order.base
+		_order.principal
 	));
 }
     
@@ -191,7 +192,7 @@ function hashOrder(makerOrder memory _order)private pure returns(bytes32){
 function getActiveOffer(bytes32 makerOrderKey,bytes32 takerOrderKey)
 public
 view
-returns (address maker, address taker, uint256 side, address tokenAddress, uint256 duration, uint256 rate, uint256 base, uint256 interest, uint256 state, uint256 lockTime, uint256 initialRate)
+returns (address maker, address taker, uint256 side, address tokenAddress, uint256 duration, uint256 rate, uint256 principal, uint256 interest, uint256 state, uint256 lockTime, uint256 initialRate)
 {
 	maker = takerMapping[makerOrderKey][takerOrderKey].maker;
 	side = takerMapping[makerOrderKey][takerOrderKey].side;
@@ -199,12 +200,12 @@ returns (address maker, address taker, uint256 side, address tokenAddress, uint2
 	duration = takerMapping[makerOrderKey][takerOrderKey].duration;
 	rate = takerMapping[makerOrderKey][takerOrderKey].rate;
 	interest = takerMapping[makerOrderKey][takerOrderKey].interest;
-	base = takerMapping[makerOrderKey][takerOrderKey].base;
+	principal = takerMapping[makerOrderKey][takerOrderKey].principal;
 	state = takerMapping[makerOrderKey][takerOrderKey].state;
 	lockTime = takerMapping[makerOrderKey][takerOrderKey].lockTime;
 	initialRate = takerMapping[makerOrderKey][takerOrderKey].initialRate;
         
-	return (maker, taker, side, tokenAddress, duration, rate, base, interest, state, lockTime, initialRate);
+	return (maker, taker, side, tokenAddress, duration, rate, principal, interest, state, lockTime, initialRate);
 }
     
 	
@@ -225,18 +226,17 @@ function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) priva
 	// Transfers funds to DefiHedge contract
 	Erc20 underlying = Erc20(_makerOrder.tokenAddress);
 	if (_makerOrder.side == 0) {
-		require(underlying.transferFrom(_makerOrder.maker, address(this), _makerOrder.base), "Transfer Failed!");
+		require(underlying.transferFrom(_makerOrder.maker, address(this), _makerOrder.principal), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _makerOrder.interest), "Transfer Failed!");
 	}
 	if (_makerOrder.side == 1) {
 		require(underlying.transferFrom(_makerOrder.maker, address(this), _makerOrder.interest), "Transfer Failed!");
-		require(underlying.transferFrom(msg.sender, address(this), _makerOrder.base), "Transfer Failed!");
+		require(underlying.transferFrom(msg.sender, address(this), _makerOrder.principal), "Transfer Failed!");
 	}
     	    
 	// Mint CToken from DefiHedge contract
-	mintCToken(_makerOrder.tokenAddress,_makerOrder.interest.add(_makerOrder.base));
+	mintCToken(_makerOrder.tokenAddress,_makerOrder.interest.add(_makerOrder.principal));
             
-    	    
 	// Instantiate makerOrder
 	_activeMakerOrder.maker = _makerOrder.maker;
 	_activeMakerOrder.side = _makerOrder.side;
@@ -244,9 +244,11 @@ function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) priva
 	_activeMakerOrder.duration = _makerOrder.duration;
 	_activeMakerOrder.rate = _makerOrder.rate;
 	_activeMakerOrder.interest = _makerOrder.interest;
-	_activeMakerOrder.base = _makerOrder.base;
+	_activeMakerOrder.principal = _makerOrder.principal;
 	_activeMakerOrder.state = 1;
 	_activeMakerOrder.initialRate = cToken.exchangeRateCurrent();
+	_activeMakerOrder.expiryTime = 0;
+	_activeMakerOrder.makerOrderKey = _makerOrder.makerOrderKey;
     	    
 	// Instantiate takerOrder
 	_activeTakerOrder.maker = _makerOrder.maker;
@@ -256,13 +258,13 @@ function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) priva
 	_activeTakerOrder.duration = _makerOrder.duration;
 	_activeTakerOrder.rate = _makerOrder.rate;
 	_activeTakerOrder.interest = _makerOrder.interest;
-	_activeTakerOrder.base = _makerOrder.base;
-	_activeTakerOrder.makerNonce = _makerOrder.makerNonce;
+	_activeTakerOrder.principal = _makerOrder.principal;
 	_activeTakerOrder.state = 1;
 	_activeTakerOrder.lockTime = now.add(_makerOrder.duration);
 	_activeTakerOrder.initialRate = cToken.exchangeRateCurrent();
+	_activeTakerOrder.takerOrderKey= takerOrderKey;
     	    
-    	    
+    	        
     	    
 	orderMapping[_makerOrder.makerOrderKey] = _activeMakerOrder;
     	    
@@ -274,7 +276,7 @@ function orderSettle(makerOrder memory _makerOrder, bytes32 takerOrderKey) priva
 	takerListMapping[_makerOrder.makerOrderKey].push(takerOrderKey);
 	    
 	emit newLockedOrder(_activeTakerOrder.maker,msg.sender,_activeTakerOrder.side,_activeTakerOrder.tokenAddress,
-	_activeTakerOrder.duration,_activeTakerOrder.rate,_activeTakerOrder.interest,_activeTakerOrder.base,_makerOrder.makerOrderKey,takerOrderKey);
+	_activeTakerOrder.duration,_activeTakerOrder.rate,_activeTakerOrder.interest,_activeTakerOrder.principal,_makerOrder.makerOrderKey,takerOrderKey);
     	    
 	return true;
 }
@@ -295,19 +297,6 @@ function fillOffer(makerOrder memory _makerOrder, bytes32 takerOrderKey,bytes me
 	//Check if order has already expired
 	require(orderMapping[_makerOrder.makerOrderKey].expiryTime >= now, "Order Has Expired");
 
-	/// Instantiate offer
-	makerOrder memory filledOrder = makerOrder(
-		_makerOrder.maker,
-		_makerOrder.side,
-		_makerOrder.tokenAddress,
-		_makerOrder.duration,
-		_makerOrder.rate,
-		_makerOrder.interest,
-		_makerOrder.base,
-		_makerOrder.makerNonce,
-		_makerOrder.expiryTime,
-		_makerOrder.makerOrderKey
-	);
 
 	// Parse signature into R,S,V                        
 	RPCSig memory RPCsig = signatureRPC(makerSignature);
@@ -317,7 +306,7 @@ function fillOffer(makerOrder memory _makerOrder, bytes32 takerOrderKey,bytes me
 	keccak256(abi.encodePacked(
 			"\x19\x01",
 			DOMAIN_SEPARATOR,
-			hashOrder(filledOrder)
+			hashOrder(_makerOrder)
 			)),
 			RPCsig.v,
 			RPCsig.r,
@@ -325,7 +314,7 @@ function fillOffer(makerOrder memory _makerOrder, bytes32 takerOrderKey,bytes me
 	"Invalid Signature");
 
 	// Settle Response
-	orderSettle(filledOrder,takerOrderKey);
+	orderSettle(_makerOrder,takerOrderKey);
 
 }
 	
@@ -338,66 +327,12 @@ function fillOffer(makerOrder memory _makerOrder, bytes32 takerOrderKey,bytes me
 /// Fill partial maker order 
 function partialFillOffer(makerOrder memory _makerOrder,uint256 takerVolume, bytes32 takerOrderKey, bytes memory makerSignature ) public returns (uint256){
 
-	//instantiate taker's order
-	activeTakerOrder memory _activeTakerOrder;
 
 	//Check if order has been cancelled
 	require(cancelled[_makerOrder.makerOrderKey]==false, "Order Has Been Cancelled");
 
 	//Check if order has already expired
 	require(_makerOrder.expiryTime >= now, "Order Has Expired");
-
-
-	//If order is fixed-side, ensure <= expected total interest and then instantiate order
-	if (orderMapping[_makerOrder.makerOrderKey].side == 0) {
-
-		require (takerVolume <= (orderMapping[_makerOrder.makerOrderKey].interest), "Taker Volume > Maker");
-
-		// if order has already been partially filled
-		if (orderMapping[_makerOrder.makerOrderKey].state != 0) {
-		
-			require (takerVolume <= (orderMapping[_makerOrder.makerOrderKey].interest - filled[_makerOrder.makerOrderKey]), "Taker Volume > Available");
-			
-		}
-
-
-		_activeTakerOrder.maker=_makerOrder.maker;
-		_activeTakerOrder.taker=msg.sender;
-		_activeTakerOrder.side=_makerOrder.side;
-		_activeTakerOrder.tokenAddress=_makerOrder.tokenAddress;
-		_activeTakerOrder.duration=_makerOrder.duration;
-		_activeTakerOrder.rate=_makerOrder.rate;
-		_activeTakerOrder.interest= takerVolume;
-		//calculate taker % of total maker order and set opposing param 
-		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_makerOrder.interest)).div(100000000000000000000000000);
-		_activeTakerOrder.base=_makerOrder.base.mul(orderRatio);
-		_activeTakerOrder.takerOrderKey=takerOrderKey;   	
-	}
-
-	//If order is floating-side, ensure < expected principal
-	if (orderMapping[_makerOrder.makerOrderKey].side == 1) {
-
-		require (takerVolume <= (orderMapping[_makerOrder.makerOrderKey].base), "Taker Volume > Maker");
-
-		// if order has already been partially filled
-		if (orderMapping[_makerOrder.makerOrderKey].state != 0) {
-
-		require (takerVolume <= (orderMapping[_makerOrder.makerOrderKey].base - filled[_makerOrder.makerOrderKey]), "Taker Volume > Available");
-		}
-
-		_activeTakerOrder.maker=_makerOrder.maker;
-		_activeTakerOrder.taker=msg.sender;
-		_activeTakerOrder.side=_makerOrder.side;
-		_activeTakerOrder.tokenAddress=_makerOrder.tokenAddress;
-		_activeTakerOrder.duration=_makerOrder.duration;
-		_activeTakerOrder.rate=_makerOrder.rate;
-		//calculate taker % of total maker order and set opposing param 
-		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_makerOrder.base)).div(100000000000000000000000000);
-		_activeTakerOrder.interest= _makerOrder.interest.mul(orderRatio);
-		_activeTakerOrder.base= takerVolume;
-		_activeTakerOrder.takerOrderKey=takerOrderKey;
-	}
-
 
 	// Parse signature into R,S,V                        
 	RPCSig memory RPCsig = signatureRPC(makerSignature);
@@ -416,70 +351,114 @@ function partialFillOffer(makerOrder memory _makerOrder,uint256 takerVolume, byt
 
 
 	// Settle Response
-	partialOrderSettle(_activeTakerOrder, _makerOrder.makerOrderKey);
+	partialOrderSettle(_makerOrder, takerVolume, takerOrderKey);
 
 }
     
     
 ///Settle part of a maker order's volume
 ///@param
-///_activeTakerOrder: the taker's order 
-///makerOrderKey: off-chain key generated as keccak hash of User + time + nonce
-function partialOrderSettle(activeTakerOrder memory _activeTakerOrder, bytes32 makerOrderKey) private returns (bool){
+///_makerOrder: makers order to fill
+///takerVolume: amount of currency being taken
+///takerOrderKey: off-chain key generated as keccak hash of User + time + nonce
+function partialOrderSettle(makerOrder memory _makerOrder,uint256 takerVolume, bytes32 takerOrderKey) private returns (bool){
 
 	activeMakerOrder memory _activeMakerOrder;
-
+	activeTakerOrder memory _activeTakerOrder;
+	
 	CErc20 cToken = CErc20(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C); //DAI cToken Address
 
-	// Check trades side
+
+	//If order is fixed-side, ensure volume is less than expected interest
+	if (_makerOrder.side == 0) {
+
+		require (takerVolume <= (_makerOrder.interest), "Taker Volume > Maker");
+
+		// if order has already been partially filled
+		if (orderMapping[_makerOrder.makerOrderKey].state != 0) {
+		
+			require (takerVolume <= (_makerOrder.interest - filled[_makerOrder.makerOrderKey]), "Taker Volume > Available");
+			
+		}
+		//calculate taker % of total maker order and set opposing param 
+		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_makerOrder.interest)).div(100000000000000000000000000);
+		_activeTakerOrder.principal=_makerOrder.principal.mul(orderRatio);
+		_activeTakerOrder.interest=takerVolume;
+	}
+
+	//If order is floating-side, ensure volume is less than expected principal
+	if (_makerOrder.side == 1) {
+
+		require (takerVolume <= (_makerOrder.principal), "Taker Volume > Maker");
+
+		// if order has already been partially filled
+		if (orderMapping[_makerOrder.makerOrderKey].state != 0) {
+
+		require (takerVolume <= (_makerOrder.principal - filled[_makerOrder.makerOrderKey]), "Taker Volume > Available");
+		}
+		
+		//calculate taker % of total maker order and set opposing param 
+		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_makerOrder.principal)).div(100000000000000000000000000);
+		_activeTakerOrder.interest= _makerOrder.interest.mul(orderRatio);
+		_activeTakerOrder.principal=takerVolume;
+	}
+
+	// Check order side
 	// Transfers funds to DefiHedge contract
 	Erc20 underlying = Erc20(_activeTakerOrder.tokenAddress);
 	if (_activeTakerOrder.side == 0) {
-		require(underlying.transferFrom(_activeTakerOrder.maker, address(this), _activeTakerOrder.base), "Transfer Failed!");
+		require(underlying.transferFrom(_activeTakerOrder.maker, address(this), _activeTakerOrder.principal), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _activeTakerOrder.interest), "Transfer Failed!");
 	}
 	if (_activeTakerOrder.side == 1) {
 		require(underlying.transferFrom(_activeTakerOrder.maker, address(this), _activeTakerOrder.interest), "Transfer Failed!");
-		require(underlying.transferFrom(msg.sender, address(this), _activeTakerOrder.base), "Transfer Failed!");
+		require(underlying.transferFrom(msg.sender, address(this), _activeTakerOrder.principal), "Transfer Failed!");
 	}
 
 	// Mint CToken from DefiHedge contract
-	mintCToken(_activeTakerOrder.tokenAddress,_activeTakerOrder.interest.add(_activeTakerOrder.base));
+	mintCToken(_activeTakerOrder.tokenAddress,_activeTakerOrder.interest.add(_activeTakerOrder.principal));
 
 
 	// After mint success fill order params & store takerOrder in takerMapping
+	_activeTakerOrder.maker=_makerOrder.maker;
+	_activeTakerOrder.taker=msg.sender;
+	_activeTakerOrder.side=_makerOrder.side;
+	_activeTakerOrder.tokenAddress=_makerOrder.tokenAddress;
+	_activeTakerOrder.duration=_makerOrder.duration;
+	_activeTakerOrder.rate=_makerOrder.rate;
 	_activeTakerOrder.state = 1;  /// Set state to active
 	_activeTakerOrder.lockTime = now.add(_activeTakerOrder.duration); /// Set locktime
 	_activeTakerOrder.initialRate = cToken.exchangeRateCurrent();  /// Get initial exchange rate
-
-	takerMapping[makerOrderKey][_activeTakerOrder.takerOrderKey]= _activeTakerOrder;
+	_activeTakerOrder.takerOrderKey=takerOrderKey;
+	
+	takerMapping[_makerOrder.makerOrderKey][_activeTakerOrder.takerOrderKey]= _activeTakerOrder;
 
 
 	// Instantiate & store makerOrder if this is first fill
-	if (orderMapping[makerOrderKey].maker == address(0x0000000000000000000000000000000000000000)) {
+	if (orderMapping[_makerOrder.makerOrderKey].maker == address(0x0000000000000000000000000000000000000000)) {
 
-		_activeMakerOrder.maker = _activeTakerOrder.maker;
-		_activeMakerOrder.side = _activeTakerOrder.side;
-		_activeMakerOrder.tokenAddress = _activeTakerOrder.tokenAddress;
-		_activeMakerOrder.duration = _activeTakerOrder.duration;
-		_activeMakerOrder.rate = _activeTakerOrder.rate;
-		_activeMakerOrder.interest = _activeTakerOrder.interest;
-		_activeMakerOrder.base = _activeTakerOrder.base;
+		_activeMakerOrder.maker = _makerOrder.maker;
+		_activeMakerOrder.side = _makerOrder.side;
+		_activeMakerOrder.tokenAddress = _makerOrder.tokenAddress;
+		_activeMakerOrder.duration = _makerOrder.duration;
+		_activeMakerOrder.rate = _makerOrder.rate;
+		_activeMakerOrder.interest = _makerOrder.interest;
+		_activeMakerOrder.principal = _makerOrder.principal;
 		_activeMakerOrder.state = 1; /// Set state to active
 		_activeMakerOrder.initialRate = _activeTakerOrder.initialRate; /// Get initial exchange rate
+		_activeMakerOrder.expiryTime = _makerOrder.expiryTime;
+		_activeMakerOrder.makerOrderKey = _makerOrder.makerOrderKey;
 
-		orderMapping[makerOrderKey] = _activeMakerOrder;
+		orderMapping[_makerOrder.makerOrderKey] = _activeMakerOrder;
 	}
 
 
 	//push makerOrderKey to general order list (for testing)
-	makerList.push(makerOrderKey);
+	makerList.push(_makerOrder.makerOrderKey);
 
 	//push takerOrderKey to takerOrderList nested in mapping
-	takerListMapping[makerOrderKey].push(_activeTakerOrder.takerOrderKey);
+	takerListMapping[_makerOrder.makerOrderKey].push(_activeTakerOrder.takerOrderKey);
 
-	emit newLockedOrder(_activeTakerOrder.maker,msg.sender,_activeTakerOrder.side,_activeTakerOrder.tokenAddress,_activeTakerOrder.duration,_activeTakerOrder.rate,
-	_activeTakerOrder.interest,_activeTakerOrder.base,makerOrderKey,_activeTakerOrder.takerOrderKey);
 
 	return true;	    	    
 }
@@ -533,7 +512,7 @@ returns(uint256){
 	if (orderMapping[makerOrderKey].side == 1 ) {
 
 		// Calculate annualized interest-rate generated by the swap agreement
-		uint total = takerMapping[makerOrderKey][takerOrderKey].base.add(takerMapping[makerOrderKey][takerOrderKey].interest);
+		uint total = takerMapping[makerOrderKey][takerOrderKey].principal.add(takerMapping[makerOrderKey][takerOrderKey].interest);
 		uint yield = ((cToken.exchangeRateCurrent().mul(100000000000000000000000000)).div(takerMapping[makerOrderKey][takerOrderKey].initialRate)).sub(100000000000000000000000000);
 		uint annualizedRate = ((yield.mul(31536000)).div(orderMapping[makerOrderKey].duration));
 
@@ -586,7 +565,7 @@ returns(uint256){
 	if (orderMapping[makerOrderKey].side == 0 ) {
 
 		// Calculate annualized interest-rate generated by the swap agreement
-		uint total = takerMapping[makerOrderKey][takerOrderKey].base.add(takerMapping[makerOrderKey][takerOrderKey].interest);
+		uint total = takerMapping[makerOrderKey][takerOrderKey].principal.add(takerMapping[makerOrderKey][takerOrderKey].interest);
 		uint yield = ((cToken.exchangeRateCurrent().mul(100000000000000000000000000)).div(takerMapping[makerOrderKey][takerOrderKey].initialRate)).sub(100000000000000000000000000);
 		uint annualizedRate = ((yield.mul(31536000)).div(orderMapping[makerOrderKey].duration));
 
@@ -637,7 +616,7 @@ returns(uint256){
 	// Change state to Expired
 	takerMapping[makerOrderKey][takerOrderKey].state = 2;
 
-	emit orderReleased(takerOrderKey);
+	emit orderReleased(makerOrderKey,takerOrderKey);
 
 	return(orderMapping[makerOrderKey].state);				
 }
@@ -699,4 +678,3 @@ function signatureRPC(bytes memory sig)internal pure returns (RPCSig memory RPCs
 	}
 
 }
-
