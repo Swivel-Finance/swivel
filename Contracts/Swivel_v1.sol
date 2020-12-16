@@ -508,6 +508,9 @@ function cancelOrder(makerOrder memory _makerOrder, bytes32 makerOrderKey, bytes
 		RPCsig.s), 
 	"Invalid Signature");
 
+    // Require the sender to be maker
+    require(msg.sender == _makerOrder.maker);
+    
 	cancelled[makerOrderKey] = true;
 
 
