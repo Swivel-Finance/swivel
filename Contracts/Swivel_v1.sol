@@ -123,8 +123,8 @@ bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
 );
 
 
-// Offer Hash Schema
-bytes32 constant OFFER_TYPEHASH = keccak256(
+// Order Hash Schema
+bytes32 constant ORDER_TYPEHASH = keccak256(
 	"order(address maker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 principal,uint256 makerNonce,uint256 expiry,bytes orderKey)"
 );
 
@@ -146,7 +146,7 @@ function hashDomain(EIP712Domain memory eip712Domain) internal pure returns (byt
 /// @param _order: order struct
 function hashOrder(order memory _order)private pure returns(bytes32){
 	return keccak256(abi.encode(
-		OFFER_TYPEHASH,
+		ORDER_TYPEHASH,
 		_order.maker,
 		_order.side,
 		_order.tokenAddress,
@@ -180,7 +180,7 @@ function fill(order memory _order, bytes memory agreementKey,bytes memory makerS
 	// Parse signature into R,S,V                        
 	RPCSig memory RPCsig = signatureRPC(makerSignature);
 
-	// Validate offer signature & ensure it was created by maker
+	// Validate order signature & ensure it was created by maker
 	require(_order.maker == ecrecover(
 	keccak256(abi.encodePacked(
 			"\x19\x01",
@@ -266,7 +266,7 @@ function partialFill(order memory _order,uint256 takerVolume, bytes memory agree
 	// Parse signature into R,S,V                        
 	RPCSig memory RPCsig = signatureRPC(makerSignature);
 
-	// Validate offer signature & ensure it was created by maker
+	// Validate order signature & ensure it was created by maker
 	require(_order.maker == ecrecover(
 		keccak256(abi.encodePacked(
 			"\x19\x01",
@@ -381,7 +381,7 @@ function cancel(order memory _order, bytes memory makerSignature) public returns
 	// Parse signature into R,S,V                        
 	RPCSig memory RPCsig = signatureRPC(makerSignature);
 
-	// Validate offer signature & ensure it was created by maker
+	// Validate order signature & ensure it was created by maker
 	require(msg.sender == ecrecover(
 		keccak256(abi.encodePacked(
 		"\x19\x01",
