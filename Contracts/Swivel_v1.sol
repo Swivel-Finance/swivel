@@ -20,7 +20,7 @@ abstract contract cErc20 is Erc20 {
 contract Swivel {
 
 /// Signature struct 
-struct RPCSig{
+struct sig{
 	uint8 v;
 	bytes32 r;
 	bytes32 s;
@@ -46,8 +46,9 @@ struct order {
 	uint256 makerNonce;
 	uint256 expiry;
 	bytes orderKey;
+	sig signature;
 }
-    
+
     
 /// Order structure for taker mapping    
 struct agreement {
@@ -125,7 +126,7 @@ bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
 
 // Order Hash Schema
 bytes32 constant ORDER_TYPEHASH = keccak256(
-	"order(address maker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 principal,uint256 makerNonce,uint256 expiry,bytes orderKey)"
+	"order(address maker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 principal,uint256 makerNonce,uint256 expiry,bytes orderKey,sig signature)sig(uint8 v,bytes32 r,bytes32 s)"
 );
 
 
@@ -176,10 +177,6 @@ function fill(order memory _order, bytes memory agreementKey,bytes memory makerS
 	// Check if order has already expired
 	require(_order.expiry >= block.timestamp, "Order Has Expired");
 
-
-	// Parse signature into R,S,V                        
-	RPCSig memory RPCsig = signatureRPC(makerSignature);
-
 	// Validate order signature & ensure it was created by maker
 	require(_order.maker == ecrecover(
 	keccak256(abi.encodePacked(
@@ -187,9 +184,9 @@ function fill(order memory _order, bytes memory agreementKey,bytes memory makerS
 			DOMAIN_SEPARATOR,
 			hashOrder(_order)
 			)),
-			RPCsig.v,
-			RPCsig.r,
-			RPCsig.s), 
+			_order.signature.v,
+			_order.signature.r,
+			_order.signature.s), 
 	"Invalid Signature");
 
 	// Settle Response
@@ -256,15 +253,11 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 /// @param makerSignature: signature associated with order param
 function partialFill(order memory _order,uint256 takerVolume, bytes memory agreementKey, bytes memory makerSignature ) public returns (uint256){
 
-
 	// Check if order has been cancelled
 	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
 
 	// Check if order has already expired
 	require(_order.expiry >= block.timestamp, "Order Has Expired");
-
-	// Parse signature into R,S,V                        
-	RPCSig memory RPCsig = signatureRPC(makerSignature);
 
 	// Validate order signature & ensure it was created by maker
 	require(_order.maker == ecrecover(
@@ -273,9 +266,9 @@ function partialFill(order memory _order,uint256 takerVolume, bytes memory agree
 			DOMAIN_SEPARATOR,
 			hashOrder(_order)
 			)),
-			RPCsig.v,
-			RPCsig.r,
-			RPCsig.s), 
+			_order.signature.v,
+			_order.signature.r,
+			_order.signature.s), 
 	"Invalid Signature");
 
 
@@ -378,9 +371,6 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 /// @param makerSignature: maker's unseparated signature
 function cancel(order memory _order, bytes memory makerSignature) public returns(bool){
 
-	// Parse signature into R,S,V                        
-	RPCSig memory RPCsig = signatureRPC(makerSignature);
-
 	// Validate order signature & ensure it was created by maker
 	require(msg.sender == ecrecover(
 		keccak256(abi.encodePacked(
@@ -388,9 +378,9 @@ function cancel(order memory _order, bytes memory makerSignature) public returns
 		DOMAIN_SEPARATOR,
 		hashOrder(_order)
 		)),
-		RPCsig.v,
-		RPCsig.r,
-		RPCsig.s), 
+		_order.signature.v,
+		_order.signature.r,
+		_order.signature.s), 
 	"Invalid Signature");
 
     // Require the sender to be maker
@@ -407,9 +397,7 @@ function cancel(order memory _order, bytes memory makerSignature) public returns
 /// Release an agreement if term completed
 /// @param orderKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
-function release(bytes memory orderKey, bytes memory agreementKey)
-public
-returns(uint256){
+function release(bytes memory orderKey, bytes memory agreementKey) public returns(uint256){
 
 	// Require swap state to be active
 	// Require swap duration to have expired
@@ -536,10 +524,7 @@ returns(uint256){
 /// Mint cToken
 /// @param _erc20Contract: Address of ERC token used in minting
 /// @param _numTokensToSupply: Number of tokens to mint with
-function mintCToken(
-address _erc20Contract,
-uint _numTokensToSupply) 
-internal returns (uint) {
+function mintCToken(address _erc20Contract,uint _numTokensToSupply) internal returns (uint) {
         
 	Erc20 underlying = Erc20(_erc20Contract);
 
@@ -558,42 +543,10 @@ internal returns (uint) {
 /// Redeem cToken
 /// @param _cErc20Contract: Address of cERC token to redeem
 /// @param _numTokensToRedeem: Number of underlying tokens to redeem
-function redeemCToken(
-address _cErc20Contract, uint _numTokensToRedeem) internal {
-cErc20(_cErc20Contract).redeemUnderlying(_numTokensToRedeem);
+function redeemCToken(address _cErc20Contract, uint _numTokensToRedeem) internal {
+    
+    cErc20(_cErc20Contract).redeemUnderlying(_numTokensToRedeem);
+    
 }
-	
-	
-/// Splits signature into RSV
-/// @param sig: maker signature
-function signatureRPC(bytes memory sig)internal pure returns (RPCSig memory RPCsig){
-	bytes32 r;
-	bytes32 s;
-	uint8 v;
-
-	if (sig.length != 65) {
-		return RPCSig(0,'0','0');
-	}
-
-	assembly {
-	r := mload(add(sig, 32))
-	s := mload(add(sig, 64))
-	v := and(mload(add(sig, 65)), 255)
-	}
-
-	if (v < 27) {
-		v += 27;
-	}
-
-	if (v == 39 || v == 40) {
-		v = v-12;
-	}
-
-	if (v != 27 && v != 28) {
-		return RPCSig(0,'0','0');
-	}
-
-	return RPCSig(v,r,s);
-	}
-
+    
 }
