@@ -61,7 +61,7 @@ struct agreement {
 	uint256 interest;
 	uint256 principal;
 	uint256 state;
-	uint256 lockTime;
+	uint256 releaseTime;
 	uint256 initialRate;
 	bytes orderKey;
 	bytes agreementKey;
@@ -229,7 +229,7 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 	_agreement.interest = _order.interest;
 	_agreement.principal = _order.principal;
 	_agreement.state = 1;
-	_agreement.lockTime = block.timestamp.add(_order.duration);
+	_agreement.releaseTime = block.timestamp.add(_order.duration);
 	_agreement.initialRate = cToken.exchangeRateCurrent();
 	_agreement.orderKey = _order.orderKey;
 	_agreement.agreementKey = agreementKey;
@@ -347,7 +347,7 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 	_agreement.duration = _order.duration;
 	_agreement.rate= _order.rate;
 	_agreement.state = 1;  // Set state to active
-	_agreement.lockTime = block.timestamp.add(_order.duration); // Set locktime
+	_agreement.releaseTime = block.timestamp.add(_order.duration); // Set locktime
 	_agreement.initialRate = cToken.exchangeRateCurrent();  // Get initial exchange rate
 	_agreement.agreementKey = agreementKey;
 	
@@ -401,8 +401,8 @@ function release(bytes memory orderKey, bytes memory agreementKey) public return
 
 	// Require swap state to be active
 	// Require swap duration to have expired
-	require(agreements[orderKey][agreementKey].state == 1, "Invalid State");
-	require(block.timestamp >= agreements[orderKey][agreementKey].lockTime, "Invalid Time");
+	require(agreements[orderKey][agreementKey].state == 1, "Already released");
+	require(block.timestamp >= agreements[orderKey][agreementKey].releaseTime, "Agreement term not yet complete");
 
 	cErc20 cToken = cErc20(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C);
 	Erc20 underlying = Erc20(agreements[orderKey][agreementKey].tokenAddress);
