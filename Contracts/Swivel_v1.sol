@@ -46,7 +46,6 @@ struct order {
 	uint256 makerNonce;
 	uint256 expiry;
 	bytes orderKey;
-	sig signature;
 }
 
     
@@ -126,7 +125,7 @@ bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
 
 // Order Hash Schema
 bytes32 constant ORDER_TYPEHASH = keccak256(
-	"order(address maker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 principal,uint256 makerNonce,uint256 expiry,bytes orderKey,sig signature)sig(uint8 v,bytes32 r,bytes32 s)"
+	"order(address maker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 principal,uint256 makerNonce,uint256 expiry,bytes orderKey)"
 );
 
 
@@ -165,8 +164,8 @@ function hashOrder(order memory _order)private pure returns(bytes32){
 /// Fill the entirety of a maker order's volume
 /// @param _order: maker's order 
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
-/// @param makerSignature: signature associated with order param
-function fill(order memory _order, bytes memory agreementKey,bytes memory makerSignature) 	public returns (uint256){
+/// @param signature: signature associated with maker order
+function fill(order memory _order, bytes memory agreementKey,sig memory signature) 	public returns (uint256){
 	    
 	// Check if order already partially filled
 	require(filled[_order.orderKey] == 0, "Order Already Partial/Fully Filled");
@@ -184,9 +183,9 @@ function fill(order memory _order, bytes memory agreementKey,bytes memory makerS
 			DOMAIN_SEPARATOR,
 			hashOrder(_order)
 			)),
-			_order.signature.v,
-			_order.signature.r,
-			_order.signature.s), 
+			signature.v,
+			signature.r,
+			signature.s), 
 	"Invalid Signature");
 
 	// Settle Response
@@ -250,8 +249,8 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 /// @param _order: maker's order 
 /// @param takerVolume: amount of currency being taken
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
-/// @param makerSignature: signature associated with order param
-function partialFill(order memory _order,uint256 takerVolume, bytes memory agreementKey, bytes memory makerSignature ) public returns (uint256){
+/// @param signature: signature associated with maker order
+function partialFill(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public returns (uint256){
 
 	// Check if order has been cancelled
 	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
@@ -266,9 +265,9 @@ function partialFill(order memory _order,uint256 takerVolume, bytes memory agree
 			DOMAIN_SEPARATOR,
 			hashOrder(_order)
 			)),
-			_order.signature.v,
-			_order.signature.r,
-			_order.signature.s), 
+			signature.v,
+			signature.r,
+			signature.s), 
 	"Invalid Signature");
 
 
@@ -368,8 +367,8 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
     
 /// Cancel an order
 /// @param _order: maker's order
-/// @param makerSignature: maker's unseparated signature
-function cancel(order memory _order, bytes memory makerSignature) public returns(bool){
+/// @param signature: signature associated with maker's order
+function cancel(order memory _order, sig memory signature) public returns(bool){
 
 	// Validate order signature & ensure it was created by maker
 	require(msg.sender == ecrecover(
@@ -378,9 +377,9 @@ function cancel(order memory _order, bytes memory makerSignature) public returns
 		DOMAIN_SEPARATOR,
 		hashOrder(_order)
 		)),
-		_order.signature.v,
-		_order.signature.r,
-		_order.signature.s), 
+		signature.v,
+		signature.r,
+		signature.s), 
 	"Invalid Signature");
 
     // Require the sender to be maker
@@ -538,8 +537,8 @@ function mintCToken(address _erc20Contract,uint _numTokensToSupply) internal ret
 
 	return mintResult;
 }
-    	    
-    	    
+
+
 /// Redeem cToken
 /// @param _cErc20Contract: Address of cERC token to redeem
 /// @param _numTokensToRedeem: Number of underlying tokens to redeem
