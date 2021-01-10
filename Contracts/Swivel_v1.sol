@@ -187,7 +187,6 @@ function fill(order memory _order, bytes memory agreementKey, sig memory signatu
 			signature.r,
 			signature.s), 
 	"Invalid Signature");
-	
 
 	// Settle Response
 	settle(_order,agreementKey);
@@ -218,8 +217,8 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 		filled[_order.orderKey] = _order.principal;
 	}
     	    
-	// Mint CToken from Swivel contract
-	mintCToken(_order.tokenAddress,_order.interest.add(_order.principal));
+ 	// Mint CToken from Swivel contract
+ 	mintCToken(_order.tokenAddress,_order.interest.add(_order.principal));
             
 	// Instantiate agreement
 	_agreement.maker = _order.maker;
@@ -305,8 +304,8 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 		}
 		// Calculate taker % of total maker order and set opposing param 
 		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_order.interest)).div(100000000000000000000000000);
-		_agreement.principal=_order.principal.mul(orderRatio);
-		_agreement.interest=takerVolume;
+		_agreement.principal= _order.principal.mul(orderRatio);
+		_agreement.interest= takerVolume;
 	}
 
 	// If order is floating-side, ensure volume is less than expected principal
@@ -332,12 +331,10 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 	if (_order.side == 0) {
 		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.principal), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _agreement.interest), "Transfer Failed!");
-		filled[_order.orderKey] = _order.interest;
 	}
 	if (_order.side == 1) {
 		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.interest), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _agreement.principal), "Transfer Failed!");
-		filled[_order.orderKey] = _order.principal;
 	}
 
 	// Mint cToken from Swivel contract
@@ -358,7 +355,8 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 	
 	agreements[_order.orderKey][agreementKey] = _agreement;
 
-
+    filled[_order.orderKey] = takerVolume;
+    
 	// Push agreementKey to orderTakers
 	orderTakers[_order.orderKey].push(_agreement.agreementKey);
 
