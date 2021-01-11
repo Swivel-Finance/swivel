@@ -303,9 +303,9 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 			
 		}
 		// Calculate taker % of total maker order and set opposing param 
-		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_order.interest)).div(100000000000000000000000000);
-		_agreement.principal= _order.principal.mul(orderRatio);
-		_agreement.interest= takerVolume;
+		uint256 orderRatio = (((takerVolume).mul(1e18)).div(_order.interest));
+		_agreement.principal = _order.principal.mul(orderRatio).div(1e18);
+		_agreement.interest = takerVolume;
 		
 		// Transfers funds to Swivel contract
 		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.principal), "Transfer Failed!");
@@ -324,9 +324,9 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 		}
 		
 		// Calculate taker % of total maker order and set opposing param 
-		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_order.principal)).div(100000000000000000000000000);
-		_agreement.interest= _order.interest.mul(orderRatio);
-		_agreement.principal=takerVolume;
+		uint256 orderRatio = (((takerVolume).mul(1e18)).div(_order.principal));
+		_agreement.interest = _order.interest.mul(orderRatio).div(1e18);
+		_agreement.principal = takerVolume;
 		
 		// Transfers funds to Swivel contract
 		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.interest), "Transfer Failed!");
