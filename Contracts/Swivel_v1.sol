@@ -169,7 +169,7 @@ function fill(order memory _order, bytes memory agreementKey, sig memory signatu
 	    
 	// Check if order already partially filled
 	require(filled[_order.orderKey] == 0, "Order Already Partial/Fully Filled");
-
+    
 	// Check if order has been cancelled
 	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
 
@@ -289,7 +289,7 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 	agreement memory _agreement;
 	
 	cErc20 cToken = cErc20(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb); //DAI cToken Address
-
+    Erc20 underlying = Erc20(_agreement.tokenAddress);
 
 	// If order is fixed-side, ensure volume is less than expected interest
 	if (_order.side == 0) {
@@ -306,6 +306,10 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_order.interest)).div(100000000000000000000000000);
 		_agreement.principal= _order.principal.mul(orderRatio);
 		_agreement.interest= takerVolume;
+		
+		// Transfers funds to Swivel contract
+		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.principal), "Transfer Failed!");
+		require(underlying.transferFrom(msg.sender, address(this), _agreement.interest), "Transfer Failed!");
 	}
 
 	// If order is floating-side, ensure volume is less than expected principal
@@ -323,19 +327,12 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_order.principal)).div(100000000000000000000000000);
 		_agreement.interest= _order.interest.mul(orderRatio);
 		_agreement.principal=takerVolume;
-	}
-
-	// Check order side
-	// Transfers funds to Swivel contract
-	Erc20 underlying = Erc20(_agreement.tokenAddress);
-	if (_order.side == 0) {
-		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.principal), "Transfer Failed!");
-		require(underlying.transferFrom(msg.sender, address(this), _agreement.interest), "Transfer Failed!");
-	}
-	if (_order.side == 1) {
+		
+		// Transfers funds to Swivel contract
 		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.interest), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _agreement.principal), "Transfer Failed!");
 	}
+
 
 	// Mint cToken from Swivel contract
 	mintCToken(_agreement.tokenAddress,_agreement.interest.add(_agreement.principal));
