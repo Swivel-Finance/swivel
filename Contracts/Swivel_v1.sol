@@ -43,7 +43,7 @@ struct order {
 	uint256 rate;
 	uint256 interest;
 	uint256 principal;
-	uint256 makerNonce;
+	uint256 nonce;
 	uint256 expiry;
 	bytes orderKey;
 }
@@ -109,7 +109,7 @@ constructor () public {
 	DOMAIN_SEPARATOR = hashDomain(EIP712Domain({
 		name: "Swivel",
 		version: '1',
-		chainId: 42,
+		chainId: 5,
 		verifyingContract: 0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC
 }));
 }
@@ -125,7 +125,7 @@ bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256(
 
 // Order Hash Schema
 bytes32 constant ORDER_TYPEHASH = keccak256(
-	"order(address maker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 principal,uint256 makerNonce,uint256 expiry,bytes orderKey)"
+	"order(address maker,uint256 side,address tokenAddress,uint256 duration,uint256 rate,uint256 interest,uint256 principal,uint256 nonce,uint256 expiry,bytes orderKey)"
 );
 
 
@@ -154,7 +154,7 @@ function hashOrder(order memory _order)private pure returns(bytes32){
 		_order.rate,
 		_order.interest,
 		_order.principal,
-		_order.makerNonce,
+		_order.nonce,
 		_order.expiry,
 		keccak256(bytes(_order.orderKey))
 	));
@@ -165,11 +165,11 @@ function hashOrder(order memory _order)private pure returns(bytes32){
 /// @param _order: maker's order 
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param signature: signature associated with maker order
-function fill(order memory _order, bytes memory agreementKey,sig memory signature) 	public returns (uint256){
+function fill(order memory _order, bytes memory agreementKey, sig memory signature) 	public returns (uint256){
 	    
 	// Check if order already partially filled
 	require(filled[_order.orderKey] == 0, "Order Already Partial/Fully Filled");
-
+    
 	// Check if order has been cancelled
 	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
 
@@ -200,8 +200,8 @@ function fill(order memory _order, bytes memory agreementKey,sig memory signatur
 function settle(order memory _order, bytes memory agreementKey) private returns (bool){
 	    
 	agreement memory _agreement;
-	    
-	cErc20 cToken = cErc20(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C); //DAI cToken Address
+
+	cErc20 cToken = cErc20(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb); //DAI cToken Address
 
 	// Check trades side
 	// Transfers funds to Swivel contract
@@ -209,14 +209,16 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 	if (_order.side == 0) {
 		require(underlying.transferFrom(_order.maker, address(this), _order.principal), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _order.interest), "Transfer Failed!");
+		filled[_order.orderKey] = _order.interest;
 	}
 	if (_order.side == 1) {
 		require(underlying.transferFrom(_order.maker, address(this), _order.interest), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _order.principal), "Transfer Failed!");
+		filled[_order.orderKey] = _order.principal;
 	}
     	    
-	// Mint CToken from Swivel contract
-	mintCToken(_order.tokenAddress,_order.interest.add(_order.principal));
+ 	// Mint CToken from Swivel contract
+ 	mintCToken(_order.tokenAddress,_order.interest.add(_order.principal));
             
 	// Instantiate agreement
 	_agreement.maker = _order.maker;
@@ -239,6 +241,7 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
     	    
 	// Push taker order to a list mapped to a given maker's order
 	orderTakers[_order.orderKey].push(agreementKey);
+	
 	    
 	emit initiated(_agreement.orderKey,_agreement.agreementKey);
     	    
@@ -285,8 +288,8 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 
 	agreement memory _agreement;
 	
-	cErc20 cToken = cErc20(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C); //DAI cToken Address
-
+	cErc20 cToken = cErc20(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb); //DAI cToken Address
+    Erc20 underlying = Erc20(_agreement.tokenAddress);
 
 	// If order is fixed-side, ensure volume is less than expected interest
 	if (_order.side == 0) {
@@ -301,8 +304,12 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 		}
 		// Calculate taker % of total maker order and set opposing param 
 		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_order.interest)).div(100000000000000000000000000);
-		_agreement.principal=_order.principal.mul(orderRatio);
-		_agreement.interest=takerVolume;
+		_agreement.principal= _order.principal.mul(orderRatio);
+		_agreement.interest= takerVolume;
+		
+		// Transfers funds to Swivel contract
+		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.principal), "Transfer Failed!");
+		require(underlying.transferFrom(msg.sender, address(this), _agreement.interest), "Transfer Failed!");
 	}
 
 	// If order is floating-side, ensure volume is less than expected principal
@@ -320,19 +327,12 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 		uint256 orderRatio = (((takerVolume).mul(100000000000000000000000000)).div(_order.principal)).div(100000000000000000000000000);
 		_agreement.interest= _order.interest.mul(orderRatio);
 		_agreement.principal=takerVolume;
-	}
-
-	// Check order side
-	// Transfers funds to Swivel contract
-	Erc20 underlying = Erc20(_agreement.tokenAddress);
-	if (_order.side == 0) {
-		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.principal), "Transfer Failed!");
-		require(underlying.transferFrom(msg.sender, address(this), _agreement.interest), "Transfer Failed!");
-	}
-	if (_order.side == 1) {
+		
+		// Transfers funds to Swivel contract
 		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.interest), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _agreement.principal), "Transfer Failed!");
 	}
+
 
 	// Mint cToken from Swivel contract
 	mintCToken(_agreement.tokenAddress,_agreement.interest.add(_agreement.principal));
@@ -352,7 +352,8 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 	
 	agreements[_order.orderKey][agreementKey] = _agreement;
 
-
+    filled[_order.orderKey] = takerVolume;
+    
 	// Push agreementKey to orderTakers
 	orderTakers[_order.orderKey].push(_agreement.agreementKey);
 
@@ -381,9 +382,7 @@ function cancel(order memory _order, sig memory signature) public returns(bool){
 		signature.r,
 		signature.s), 
 	"Invalid Signature");
-
-    // Require the sender to be maker
-    require(msg.sender == _order.maker);
+    
     
 	cancelled[_order.orderKey] = true;
 
@@ -403,7 +402,7 @@ function release(bytes memory orderKey, bytes memory agreementKey) public return
 	require(agreements[orderKey][agreementKey].state == 1, "Already released");
 	require(block.timestamp >= agreements[orderKey][agreementKey].releaseTime, "Agreement term not yet complete");
 
-	cErc20 cToken = cErc20(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C);
+	cErc20 cToken = cErc20(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb);
 	Erc20 underlying = Erc20(agreements[orderKey][agreementKey].tokenAddress);
 
 	// Logic for a floating-side maker
@@ -430,7 +429,7 @@ function release(bytes memory orderKey, bytes memory agreementKey) public return
 			uint floatingReturned = (agreements[orderKey][agreementKey].interest).sub(floatingDifference);
 
 			// Redeems appropriate CTokens
-			redeemCToken(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C,(total.add(floatingReturned)));
+			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(floatingReturned)));
 
 			// Returns funds to appropriate parties
 			underlying.transfer(agreements[orderKey][agreementKey].maker, floatingReturned);
@@ -444,7 +443,7 @@ function release(bytes memory orderKey, bytes memory agreementKey) public return
 			uint floatingDifference = (annualFloatingDifference.div(31536000)).mul(agreements[orderKey][agreementKey].duration);
 			uint floatingReturned = (agreements[orderKey][agreementKey].interest).add(floatingDifference);
 
-			redeemCToken(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C,(total.add(floatingReturned)));
+			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(floatingReturned)));
 
 			underlying.transfer(agreements[orderKey][agreementKey].maker, floatingReturned);
 			underlying.transfer(agreements[orderKey][agreementKey].taker, total);
@@ -452,7 +451,7 @@ function release(bytes memory orderKey, bytes memory agreementKey) public return
 
 		if (annualizedRate == agreements[orderKey][agreementKey].rate) {
 
-			redeemCToken(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C,(total.add(agreements[orderKey][agreementKey].interest)));
+			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(agreements[orderKey][agreementKey].interest)));
 			
 			underlying.transfer(agreements[orderKey][agreementKey].maker, agreements[orderKey][agreementKey].interest);
 			underlying.transfer(agreements[orderKey][agreementKey].taker, total);
@@ -483,7 +482,7 @@ function release(bytes memory orderKey, bytes memory agreementKey) public return
 			uint floatingReturned = (agreements[orderKey][agreementKey].interest).sub(floatingDifference);
 
 			// Redeems appropriate CTokens
-			redeemCToken(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C,(total.add(floatingReturned)));
+			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(floatingReturned)));
 
 			// Returns funds to appropriate parties
 			underlying.transfer(agreements[orderKey][agreementKey].maker, total);
@@ -496,7 +495,7 @@ function release(bytes memory orderKey, bytes memory agreementKey) public return
 			uint floatingDifference = (annualFloatingDifference.div(31536000)).mul(agreements[orderKey][agreementKey].duration);
 			uint floatingReturned = (agreements[orderKey][agreementKey].interest).add(floatingDifference);
 
-			redeemCToken(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C,(total.add(floatingReturned)));
+			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(floatingReturned)));
 
 			underlying.transfer(agreements[orderKey][agreementKey].maker, total);
 			underlying.transfer(agreements[orderKey][agreementKey].taker, floatingReturned);
@@ -504,7 +503,7 @@ function release(bytes memory orderKey, bytes memory agreementKey) public return
 
 		if (annualizedRate == agreements[orderKey][agreementKey].rate) {
 
-			redeemCToken(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C,(total.add(agreements[orderKey][agreementKey].interest)));
+			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(agreements[orderKey][agreementKey].interest)));
 
 			underlying.transfer(agreements[orderKey][agreementKey].maker, total);
 			underlying.transfer(agreements[orderKey][agreementKey].taker, agreements[orderKey][agreementKey].interest);
@@ -527,10 +526,10 @@ function mintCToken(address _erc20Contract,uint _numTokensToSupply) internal ret
         
 	Erc20 underlying = Erc20(_erc20Contract);
 
-	cErc20 cToken = cErc20(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C);
+	cErc20 cToken = cErc20(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb);
 
 	// Approve transfer on the ERC20 contract
-	underlying.approve(0xdb5Ed4605C11822811a39F94314fDb8F0fb59A2C, _numTokensToSupply);
+	underlying.approve(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb, _numTokensToSupply);
 
 
 	uint mintResult = cToken.mint(_numTokensToSupply);
