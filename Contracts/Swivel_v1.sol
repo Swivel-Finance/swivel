@@ -241,7 +241,7 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 	orderTakers[_order.orderKey].push(agreementKey);
 	
 	    
-	emit initiated(_agreement.orderKey,_agreement.agreementKey);
+	emit initiated(_agreement.orderKey,agreementKey);
     	    
 	return true;
 }
