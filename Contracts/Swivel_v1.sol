@@ -63,7 +63,6 @@ struct agreement {
 	uint256 releaseTime;
 	uint256 initialRate;
 	bytes orderKey;
-	bytes agreementKey;
 }    
     
 
@@ -233,7 +232,6 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 	_agreement.releaseTime = block.timestamp.add(_order.duration);
 	_agreement.initialRate = cToken.exchangeRateCurrent();
 	_agreement.orderKey = _order.orderKey;
-	_agreement.agreementKey = agreementKey;
     	    
 
     // Store taker order	    
@@ -308,7 +306,7 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 		_agreement.interest = takerVolume;
 		
 		// Transfers funds to Swivel contract
-		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.principal), "Transfer Failed!");
+		require(underlying.transferFrom(_order.maker, address(this), _agreement.principal), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _agreement.interest), "Transfer Failed!");
 	}
 
@@ -329,7 +327,7 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 		_agreement.principal = takerVolume;
 		
 		// Transfers funds to Swivel contract
-		require(underlying.transferFrom(_agreement.maker, address(this), _agreement.interest), "Transfer Failed!");
+		require(underlying.transferFrom(_order.maker, address(this), _agreement.interest), "Transfer Failed!");
 		require(underlying.transferFrom(msg.sender, address(this), _agreement.principal), "Transfer Failed!");
 	}
 
@@ -348,7 +346,6 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 	_agreement.state = 1;  // Set state to active
 	_agreement.releaseTime = block.timestamp.add(_order.duration); // Set locktime
 	_agreement.initialRate = cToken.exchangeRateCurrent();  // Get initial exchange rate
-	_agreement.agreementKey = agreementKey;
 	
 	agreements[_order.orderKey][agreementKey] = _agreement;
 
