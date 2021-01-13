@@ -352,12 +352,12 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
     filled[_order.orderKey] = takerVolume;
     
 	// Push agreementKey to orderTakers
-	orderTakers[_order.orderKey].push(_agreement.agreementKey);
+	orderTakers[_order.orderKey].push(agreementKey);
 
 
 
     // Emit new agreement
-    emit initiated(_agreement.orderKey,_agreement.agreementKey);
+    emit initiated(_agreement.orderKey,agreementKey);
 
 	return true;	    	    
 }
