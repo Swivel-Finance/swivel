@@ -104,7 +104,7 @@ event released(
 
 using SafeMath for uint;
 
-constructor () public {
+constructor () {
 	DOMAIN_SEPARATOR = hashDomain(EIP712Domain({
 		name: "Swivel",
 		version: '1',
@@ -164,7 +164,7 @@ function hashOrder(order memory _order)private pure returns(bytes32){
 /// @param _order: maker's order 
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param signature: signature associated with maker order
-function fill(order memory _order, bytes memory agreementKey, sig memory signature) 	public returns (uint256){
+function fill(order memory _order, bytes memory agreementKey, sig memory signature) public {
 	    
 	// Check if order already partially filled
 	require(filled[_order.orderKey] == 0, "Order Already Partial/Fully Filled");
@@ -246,12 +246,13 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 	return true;
 }
 
+
 /// Fill partial maker order 
 /// @param _order: maker's order 
 /// @param takerVolume: amount of currency being taken
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param signature: signature associated with maker order
-function partialFill(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public returns (uint256){
+function partialFill(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public {
 
 	// Check if order has been cancelled
 	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
@@ -360,6 +361,91 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
     emit initiated(_agreement.orderKey,agreementKey);
 
 	return true;	    	    
+}
+    
+    
+/// Fill partial maker order 
+/// @param orders: array of orders
+/// @param signatures: array of associated order signatures
+/// @param takerVolume: amount of currency being taken
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+function batchFillFixed(order[] memory orders, sig[] memory signatures, uint256 takerVolume, bytes memory agreementKey) public {
+    
+    uint256 orderCount = orders.length;
+    
+    uint256 amountFilled;
+    
+    
+    // Loop through orders
+    for (uint i=0; i<orderCount; i++) {
+        
+        // Instantiate order
+        order memory _order = orders[i];
+        
+        // Calculate current available volume
+        uint256 availableTaker = takerVolume - amountFilled;
+        uint256 availableMaker = _order.interest - filled[_order.orderKey];
+        
+        // Check if full fill is possible
+        if (filled[_order.orderKey] != 0 && _order.interest <= availableTaker) {
+            fill(_order, agreementKey, signatures[i]);
+            amountFilled = amountFilled + _order.interest;
+        }
+        
+        else {
+            if (availableTaker > availableMaker) {
+                partialFill(_order, availableMaker, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableMaker;
+            }
+            else {
+                partialFill(_order, availableTaker, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableTaker;
+            }
+        }
+    }
+}
+
+
+/// Fill partial maker order 
+/// @param orders: array of orders
+/// @param signatures: array of associated order signatures
+/// @param takerVolume: amount of currency being taken
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+function batchFillFloating(order[] memory orders, sig[] memory signatures, uint256 takerVolume, bytes memory agreementKey) public {
+    
+    
+    uint256 orderCount = orders.length;
+    
+    uint256 amountFilled;
+    
+    
+    // Loop through orders
+    for (uint i=0; i<orderCount; i++) {
+        
+        // Instantiate order
+        order memory _order = orders[i];
+        
+        // Calculate current available volume
+        uint256 availableTaker = takerVolume - amountFilled;
+        uint256 availableMaker = _order.principal - filled[_order.orderKey];
+        
+        // Check if full fill is possible
+        if (filled[_order.orderKey] != 0 && _order.principal <= availableTaker) {
+            fill(_order, agreementKey, signatures[i]);
+            amountFilled = amountFilled + _order.principal;
+        }
+        
+        else {
+            if (availableTaker > availableMaker) {
+                partialFill(_order, availableMaker, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableMaker;
+            }
+            else {
+                partialFill(_order, availableTaker, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableTaker;
+            }
+        }
+    }
 }
     
     
