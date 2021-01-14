@@ -386,15 +386,13 @@ function batchFillFixed(order[] memory orders, sig[] memory signatures, uint256 
         uint256 availableTaker = takerVolume - amountFilled;
         uint256 availableMaker = _order.interest - filled[_order.orderKey];
         
-        // Check if full fill is possible + fill
+        // Check if full fill is possible
         if (filled[_order.orderKey] != 0 && _order.interest <= availableTaker) {
             fill(_order, agreementKey, signatures[i]);
             amountFilled = amountFilled + _order.interest;
         }
         
-        // If full fill is not possible
         else {
-            // Check which side has the limiting available volume + partialFill
             if (availableTaker > availableMaker) {
                 partialFill(_order, availableMaker, agreementKey, signatures[i]);
                 amountFilled = amountFilled + availableMaker;
@@ -437,9 +435,7 @@ function batchFillFloating(order[] memory orders, sig[] memory signatures, uint2
             amountFilled = amountFilled + _order.principal;
         }
         
-        // If full fill is not possible
         else {
-            // Check which side has the limiting available volume + partialFill
             if (availableTaker > availableMaker) {
                 partialFill(_order, availableMaker, agreementKey, signatures[i]);
                 amountFilled = amountFilled + availableMaker;
