@@ -364,7 +364,7 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 }
     
     
-/// Fill partial maker order 
+/// Batch fill fixed-side orders
 /// @param orders: array of orders
 /// @param signatures: array of associated order signatures
 /// @param takerVolume: amount of currency being taken
@@ -383,11 +383,11 @@ function batchFillFixed(order[] memory orders, sig[] memory signatures, uint256 
         order memory _order = orders[i];
         
         // Calculate current available volume
-        uint256 availableTaker = takerVolume - amountFilled;
-        uint256 availableMaker = _order.interest - filled[_order.orderKey];
+        uint256 availableAgreement = takerVolume - amountFilled;
+        uint256 availableOrder = _order.interest - filled[_order.orderKey];
         
         // Check if full fill is possible + fill
-        if (filled[_order.orderKey] == 0 && _order.interest <= availableTaker) {
+        if (filled[_order.orderKey] == 0 && _order.interest <= availableAgreement) {
             fill(_order, agreementKey, signatures[i]);
             amountFilled = amountFilled + _order.interest;
         }
@@ -395,20 +395,20 @@ function batchFillFixed(order[] memory orders, sig[] memory signatures, uint256 
         // If full fill is not possible
         else {
             // Check which side has the limiting available volume + partialFill
-            if (availableTaker > availableMaker) {
-                partialFill(_order, availableMaker, agreementKey, signatures[i]);
-                amountFilled = amountFilled + availableMaker;
+            if (availableAgreement > availableOrder) {
+                partialFill(_order, availableOrder, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableOrder;
             }
             else {
-                partialFill(_order, availableTaker, agreementKey, signatures[i]);
-                amountFilled = amountFilled + availableTaker;
+                partialFill(_order, availableAgreement, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableAgreement;
             }
         }
     }
 }
 
 
-/// Fill partial maker order 
+/// Batch fill floating-side orders
 /// @param orders: array of orders
 /// @param signatures: array of associated order signatures
 /// @param takerVolume: amount of currency being taken
@@ -428,11 +428,11 @@ function batchFillFloating(order[] memory orders, sig[] memory signatures, uint2
         order memory _order = orders[i];
         
         // Calculate current available volume
-        uint256 availableTaker = takerVolume - amountFilled;
-        uint256 availableMaker = _order.principal - filled[_order.orderKey];
+        uint256 availableAgreement = takerVolume - amountFilled;
+        uint256 availableOrder = _order.principal - filled[_order.orderKey];
         
         // Check if full fill is possible
-        if (filled[_order.orderKey] == 0 && _order.principal <= availableTaker) {
+        if (filled[_order.orderKey] == 0 && _order.principal <= availableAgreement) {
             fill(_order, agreementKey, signatures[i]);
             amountFilled = amountFilled + _order.principal;
         }
@@ -440,13 +440,13 @@ function batchFillFloating(order[] memory orders, sig[] memory signatures, uint2
         // If full fill is not possible
         else {
             // Check which side has the limiting available volume + partialFill
-            if (availableTaker > availableMaker) {
-                partialFill(_order, availableMaker, agreementKey, signatures[i]);
-                amountFilled = amountFilled + availableMaker;
+            if (availableAgreement > availableOrder) {
+                partialFill(_order, availableOrder, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableOrder;
             }
             else {
-                partialFill(_order, availableTaker, agreementKey, signatures[i]);
-                amountFilled = amountFilled + availableTaker;
+                partialFill(_order, availableAgreement, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableAgreement;
             }
         }
     }
