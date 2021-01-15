@@ -104,7 +104,7 @@ event released(
 
 using SafeMath for uint;
 
-constructor () public {
+constructor () {
 	DOMAIN_SEPARATOR = hashDomain(EIP712Domain({
 		name: "Swivel",
 		version: '1',
@@ -243,11 +243,7 @@ function settleFloating(order memory _order, bytes memory agreementKey) private 
 /// @param _order: maker's order 
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param signature: signature associated with maker order
-<<<<<<< Updated upstream
-function fill(order memory _order, bytes memory agreementKey, sig memory signature) 	public returns (uint256){
-=======
 function fillFixed(order memory _order, bytes memory agreementKey, sig memory signature) public {
->>>>>>> Stashed changes
 	    
 	// Check if order already partially filled
 	require(filled[_order.orderKey] == 0, "Order Already Partial/Fully Filled");
@@ -323,21 +319,13 @@ function settleFixed(order memory _order, bytes memory agreementKey) private ret
 	return true;
 }
 
-<<<<<<< Updated upstream
-/// Fill partial maker order 
-=======
 
 /// Fill partial floating-side maker order 
->>>>>>> Stashed changes
 /// @param _order: maker's order 
 /// @param takerVolume: amount of currency being taken
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param signature: signature associated with maker order
-<<<<<<< Updated upstream
-function partialFill(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public returns (uint256){
-=======
 function partialFillFloating(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public {
->>>>>>> Stashed changes
 
 	// Check if order has been cancelled
 	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
@@ -520,8 +508,6 @@ function partialSettleFixed(order memory _order,uint256 takerVolume, bytes memor
 }
     
     
-<<<<<<< Updated upstream
-=======
 /// Batch fill fixed-side orders
 /// @param orders: array of orders
 /// @param signatures: array of associated order signatures
@@ -611,7 +597,6 @@ function batchFillFloating(order[] memory orders, sig[] memory signatures, uint2
 }
     
     
->>>>>>> Stashed changes
 /// Cancel an order
 /// @param _order: maker's order
 /// @param signature: signature associated with maker's order
