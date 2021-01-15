@@ -159,12 +159,12 @@ function hashOrder(order memory _order)private pure returns(bytes32){
 	));
 }
 
-	
-/// Fill the entirety of a maker order's volume
+
+/// Fill the entirety of a floating-side maker order's volume
 /// @param _order: maker's order 
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param signature: signature associated with maker order
-function fill(order memory _order, bytes memory agreementKey, sig memory signature) 	public returns (uint256){
+function fillFloating(order memory _order, bytes memory agreementKey, sig memory signature) public {
 	    
 	// Check if order already partially filled
 	require(filled[_order.orderKey] == 0, "Order Already Partial/Fully Filled");
@@ -188,7 +188,7 @@ function fill(order memory _order, bytes memory agreementKey, sig memory signatu
 	"Invalid Signature");
 
 	// Settle Response
-	settle(_order,agreementKey);
+	settleFloating(_order,agreementKey);
 
 }
 
@@ -196,7 +196,90 @@ function fill(order memory _order, bytes memory agreementKey, sig memory signatu
 /// Settle an entire maker order's volume
 /// @param _order: maker's order
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
-function settle(order memory _order, bytes memory agreementKey) private returns (bool){
+function settleFloating(order memory _order, bytes memory agreementKey) private returns (bool){
+	    
+	agreement memory _agreement;
+
+	cErc20 cToken = cErc20(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb); //DAI cToken Address
+
+	// Transfers funds to Swivel contract
+	Erc20 underlying = Erc20(_order.tokenAddress);
+	
+	require(underlying.transferFrom(_order.maker, address(this), _order.interest), "Transfer Failed!");
+	require(underlying.transferFrom(msg.sender, address(this), _order.principal), "Transfer Failed!");
+	filled[_order.orderKey] = _order.principal;
+    	    
+ 	// Mint CToken from Swivel contract
+ 	mintCToken(_order.tokenAddress,_order.interest.add(_order.principal));
+    
+	// Instantiate agreement
+	_agreement.maker = _order.maker;
+	_agreement.taker = msg.sender;
+	_agreement.side = _order.side;
+	_agreement.tokenAddress = _order.tokenAddress;
+	_agreement.duration = _order.duration;
+	_agreement.rate = _order.rate;
+	_agreement.interest = _order.interest;
+	_agreement.principal = _order.principal;
+	_agreement.state = 1;
+	_agreement.releaseTime = block.timestamp.add(_order.duration);
+	_agreement.initialRate = cToken.exchangeRateCurrent();
+	_agreement.orderKey = _order.orderKey;
+    	    
+
+    // Store taker order	    
+	agreements[_order.orderKey][agreementKey]= _agreement;
+    	    
+	// Push taker order to a list mapped to a given maker's order
+	orderTakers[_order.orderKey].push(agreementKey);
+	
+	    
+	emit initiated(_agreement.orderKey,agreementKey);
+    	    
+	return true;
+}
+
+/// Fill the entirety of a fixed-side maker order's volume
+/// @param _order: maker's order 
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+/// @param signature: signature associated with maker order
+<<<<<<< Updated upstream
+function fill(order memory _order, bytes memory agreementKey, sig memory signature) 	public returns (uint256){
+=======
+function fillFixed(order memory _order, bytes memory agreementKey, sig memory signature) public {
+>>>>>>> Stashed changes
+	    
+	// Check if order already partially filled
+	require(filled[_order.orderKey] == 0, "Order Already Partial/Fully Filled");
+    
+	// Check if order has been cancelled
+	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
+
+	// Check if order has already expired
+	require(_order.expiry >= block.timestamp, "Order Has Expired");
+
+	// Validate order signature & ensure it was created by maker
+	require(_order.maker == ecrecover(
+	keccak256(abi.encodePacked(
+			"\x19\x01",
+			DOMAIN_SEPARATOR,
+			hashOrder(_order)
+			)),
+			signature.v,
+			signature.r,
+			signature.s), 
+	"Invalid Signature");
+
+	// Settle Response
+	settleFixed(_order,agreementKey);
+
+}
+
+
+/// Settle an entire maker order's volume
+/// @param _order: maker's order
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+function settleFixed(order memory _order, bytes memory agreementKey) private returns (bool){
 	    
 	agreement memory _agreement;
 
@@ -205,17 +288,11 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 	// Check trades side
 	// Transfers funds to Swivel contract
 	Erc20 underlying = Erc20(_order.tokenAddress);
-	if (_order.side == 0) {
-		require(underlying.transferFrom(_order.maker, address(this), _order.principal), "Transfer Failed!");
-		require(underlying.transferFrom(msg.sender, address(this), _order.interest), "Transfer Failed!");
-		filled[_order.orderKey] = _order.interest;
-	}
-	if (_order.side == 1) {
-		require(underlying.transferFrom(_order.maker, address(this), _order.interest), "Transfer Failed!");
-		require(underlying.transferFrom(msg.sender, address(this), _order.principal), "Transfer Failed!");
-		filled[_order.orderKey] = _order.principal;
-	}
-    	    
+
+	require(underlying.transferFrom(_order.maker, address(this), _order.principal), "Transfer Failed!");
+	require(underlying.transferFrom(msg.sender, address(this), _order.interest), "Transfer Failed!");
+	filled[_order.orderKey] = _order.interest;
+	
  	// Mint CToken from Swivel contract
  	mintCToken(_order.tokenAddress,_order.interest.add(_order.principal));
             
@@ -246,12 +323,21 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 	return true;
 }
 
+<<<<<<< Updated upstream
 /// Fill partial maker order 
+=======
+
+/// Fill partial floating-side maker order 
+>>>>>>> Stashed changes
 /// @param _order: maker's order 
 /// @param takerVolume: amount of currency being taken
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param signature: signature associated with maker order
+<<<<<<< Updated upstream
 function partialFill(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public returns (uint256){
+=======
+function partialFillFloating(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public {
+>>>>>>> Stashed changes
 
 	// Check if order has been cancelled
 	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
@@ -273,64 +359,135 @@ function partialFill(order memory _order,uint256 takerVolume, bytes memory agree
 
 
 	// Settle Response
-	partialSettle(_order, takerVolume, agreementKey);
+	partialSettleFloating(_order, takerVolume, agreementKey);
 
 }
-    
-    
-/// Settle part of a maker order's volume
+
+
+/// Settle part of a floating-side maker order's volume
 /// @param _order: makers order to fill
 /// @param takerVolume: amount of currency being taken
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
-function partialSettle(order memory _order,uint256 takerVolume, bytes memory agreementKey) private returns (bool){
+function partialSettleFloating(order memory _order,uint256 takerVolume, bytes memory agreementKey) private returns (bool){
 
 	agreement memory _agreement;
 	
 	cErc20 cToken = cErc20(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb); //DAI cToken Address
     Erc20 underlying = Erc20(_agreement.tokenAddress);
 
-	// If order is fixed-side, ensure volume is less than expected interest
-	if (_order.side == 0) {
 
-		require (takerVolume <= (_order.interest), "Taker Volume > Maker");
+	// Ensure volume is less than expected principal
+	require (takerVolume <= (_order.principal), "Taker Volume > Maker");
 
-		// If order has already been partially filled
-		if (filled[_order.orderKey] != 0) {
-		
-			require (takerVolume <= (_order.interest - filled[_order.orderKey]), "Taker Volume > Available");
-			
-		}
-		// Calculate taker % of total maker order and set opposing param 
-		uint256 orderRatio = (((takerVolume).mul(1e18)).div(_order.interest));
-		_agreement.principal = _order.principal.mul(orderRatio).div(1e18);
-		_agreement.interest = takerVolume;
-		
-		// Transfers funds to Swivel contract
-		require(underlying.transferFrom(_order.maker, address(this), _agreement.principal), "Transfer Failed!");
-		require(underlying.transferFrom(msg.sender, address(this), _agreement.interest), "Transfer Failed!");
+	// If order has already been partially filled
+	if (filled[_order.orderKey] != 0) {
+
+	require (takerVolume <= (_order.principal - filled[_order.orderKey]), "Taker Volume > Available");
 	}
+	
+	// Calculate taker % of total maker order and set opposing param 
+	uint256 orderRatio = (((takerVolume).mul(1e18)).div(_order.principal));
+	_agreement.interest = _order.interest.mul(orderRatio).div(1e18);
+	_agreement.principal = takerVolume;
+	
+	// Transfers funds to Swivel contract
+	require(underlying.transferFrom(_order.maker, address(this), _agreement.interest), "Transfer Failed!");
+	require(underlying.transferFrom(msg.sender, address(this), _agreement.principal), "Transfer Failed!");
 
-	// If order is floating-side, ensure volume is less than expected principal
-	if (_order.side == 1) {
 
-		require (takerVolume <= (_order.principal), "Taker Volume > Maker");
+	// Mint cToken from Swivel contract
+	mintCToken(_agreement.tokenAddress,_agreement.interest.add(_agreement.principal));
 
-		// If order has already been partially filled
-		if (filled[_order.orderKey] != 0) {
 
-		require (takerVolume <= (_order.principal - filled[_order.orderKey]), "Taker Volume > Available");
-		}
+	// After mint success fill order params & store agreement in agreements mapping
+	_agreement.maker = _order.maker;
+	_agreement.taker = msg.sender;
+	_agreement.side = _order.side;
+	_agreement.tokenAddress = _order.tokenAddress;
+	_agreement.duration = _order.duration;
+	_agreement.rate= _order.rate;
+	_agreement.state = 1;  // Set state to active
+	_agreement.releaseTime = block.timestamp.add(_order.duration); // Set locktime
+	_agreement.initialRate = cToken.exchangeRateCurrent();  // Get initial exchange rate
+	
+	agreements[_order.orderKey][agreementKey] = _agreement;
+
+    filled[_order.orderKey] = takerVolume;
+    
+	// Push agreementKey to orderTakers
+	orderTakers[_order.orderKey].push(agreementKey);
+
+
+
+    // Emit new agreement
+    emit initiated(_agreement.orderKey,agreementKey);
+
+	return true;	    	    
+}
+
+
+
+
+
+/// Fill partial fixed-side maker order 
+/// @param _order: maker's order 
+/// @param takerVolume: amount of currency being taken
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+/// @param signature: signature associated with maker order
+function partialFillFixed(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public {
+
+	// Check if order has been cancelled
+	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
+
+	// Check if order has already expired
+	require(_order.expiry >= block.timestamp, "Order Has Expired");
+
+	// Validate order signature & ensure it was created by maker
+	require(_order.maker == ecrecover(
+		keccak256(abi.encodePacked(
+			"\x19\x01",
+			DOMAIN_SEPARATOR,
+			hashOrder(_order)
+			)),
+			signature.v,
+			signature.r,
+			signature.s), 
+	"Invalid Signature");
+
+
+	// Settle Response
+	partialSettleFixed(_order, takerVolume, agreementKey);
+
+}
+
+/// Settle part of a fixed-side maker order's volume
+/// @param _order: makers order to fill
+/// @param takerVolume: amount of currency being taken
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+function partialSettleFixed(order memory _order,uint256 takerVolume, bytes memory agreementKey) private returns (bool){
+
+	agreement memory _agreement;
+	
+	cErc20 cToken = cErc20(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb); //DAI cToken Address
+    Erc20 underlying = Erc20(_agreement.tokenAddress);
+
+	// Ensure volume is less than expected interest
+	require (takerVolume <= (_order.interest), "Taker Volume > Maker");
+
+	// If order has already been partially filled
+	if (filled[_order.orderKey] != 0) {
+	
+		require (takerVolume <= (_order.interest - filled[_order.orderKey]), "Taker Volume > Available");
 		
-		// Calculate taker % of total maker order and set opposing param 
-		uint256 orderRatio = (((takerVolume).mul(1e18)).div(_order.principal));
-		_agreement.interest = _order.interest.mul(orderRatio).div(1e18);
-		_agreement.principal = takerVolume;
-		
-		// Transfers funds to Swivel contract
-		require(underlying.transferFrom(_order.maker, address(this), _agreement.interest), "Transfer Failed!");
-		require(underlying.transferFrom(msg.sender, address(this), _agreement.principal), "Transfer Failed!");
 	}
-
+	// Calculate taker % of total maker order and set opposing param 
+	uint256 orderRatio = (((takerVolume).mul(1e18)).div(_order.interest));
+	_agreement.principal = _order.principal.mul(orderRatio).div(1e18);
+	_agreement.interest = takerVolume;
+	
+	// Transfers funds to Swivel contract
+	require(underlying.transferFrom(_order.maker, address(this), _agreement.principal), "Transfer Failed!");
+	require(underlying.transferFrom(msg.sender, address(this), _agreement.interest), "Transfer Failed!");
 
 	// Mint cToken from Swivel contract
 	mintCToken(_agreement.tokenAddress,_agreement.interest.add(_agreement.principal));
@@ -363,6 +520,98 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 }
     
     
+<<<<<<< Updated upstream
+=======
+/// Batch fill fixed-side orders
+/// @param orders: array of orders
+/// @param signatures: array of associated order signatures
+/// @param takerVolume: amount of currency being taken
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+function batchFillFixed(order[] memory orders, sig[] memory signatures, uint256 takerVolume, bytes memory agreementKey) public {
+    
+    uint256 orderCount = orders.length;
+    
+    uint256 amountFilled;
+    
+    
+    // Loop through orders
+    for (uint i=0; i<orderCount; i++) {
+        
+        // Instantiate order
+        order memory _order = orders[i];
+        
+        // Calculate current available volume
+        uint256 availableAgreement = takerVolume - amountFilled;
+        uint256 availableOrder = _order.interest - filled[_order.orderKey];
+        
+        // Check if full fill is possible + fill
+        if (filled[_order.orderKey] == 0 && _order.interest <= availableAgreement) {
+            fillFixed(_order, agreementKey, signatures[i]);
+            amountFilled = amountFilled + _order.interest;
+        }
+        
+        // If full fill is not possible
+        else {
+            // Check which side has the limiting available volume + partialFill
+            if (availableAgreement > availableOrder) {
+                partialFillFixed(_order, availableOrder, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableOrder;
+            }
+            else {
+                partialFillFixed(_order, availableAgreement, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableAgreement;
+            }
+        }
+    }
+}
+
+
+/// Batch fill floating-side orders
+/// @param orders: array of orders
+/// @param signatures: array of associated order signatures
+/// @param takerVolume: amount of currency being taken
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+function batchFillFloating(order[] memory orders, sig[] memory signatures, uint256 takerVolume, bytes memory agreementKey) public {
+    
+    
+    uint256 orderCount = orders.length;
+    
+    uint256 amountFilled;
+    
+    
+    // Loop through orders
+    for (uint i=0; i<orderCount; i++) {
+        
+        // Instantiate order
+        order memory _order = orders[i];
+        
+        // Calculate current available volume
+        uint256 availableAgreement = takerVolume - amountFilled;
+        uint256 availableOrder = _order.principal - filled[_order.orderKey];
+        
+        // Check if full fill is possible
+        if (filled[_order.orderKey] == 0 && _order.principal <= availableAgreement) {
+            fillFloating(_order, agreementKey, signatures[i]);
+            amountFilled = amountFilled + _order.principal;
+        }
+        
+        // If full fill is not possible
+        else {
+            // Check which side has the limiting available volume + partialFill
+            if (availableAgreement > availableOrder) {
+                partialFillFloating(_order, availableOrder, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableOrder;
+            }
+            else {
+                partialFillFloating(_order, availableAgreement, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableAgreement;
+            }
+        }
+    }
+}
+    
+    
+>>>>>>> Stashed changes
 /// Cancel an order
 /// @param _order: maker's order
 /// @param signature: signature associated with maker's order
@@ -624,7 +873,6 @@ function releaseFloating(bytes memory orderKey, bytes memory agreementKey) publi
 		// Returns funds to appropriate parties
 		underlying.transfer(agreements[orderKey][agreementKey].maker, floatingReturned);
 		underlying.transfer(agreements[orderKey][agreementKey].taker, total);
-
 	}
 
 	if (annualizedRate > agreements[orderKey][agreementKey].rate) {
