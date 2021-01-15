@@ -104,7 +104,7 @@ event released(
 
 using SafeMath for uint;
 
-constructor () public {
+constructor () {
 	DOMAIN_SEPARATOR = hashDomain(EIP712Domain({
 		name: "Swivel",
 		version: '1',
@@ -164,7 +164,7 @@ function hashOrder(order memory _order)private pure returns(bytes32){
 /// @param _order: maker's order 
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param signature: signature associated with maker order
-function fill(order memory _order, bytes memory agreementKey, sig memory signature) 	public returns (uint256){
+function fill(order memory _order, bytes memory agreementKey, sig memory signature) public {
 	    
 	// Check if order already partially filled
 	require(filled[_order.orderKey] == 0, "Order Already Partial/Fully Filled");
@@ -246,12 +246,13 @@ function settle(order memory _order, bytes memory agreementKey) private returns 
 	return true;
 }
 
+
 /// Fill partial maker order 
 /// @param _order: maker's order 
 /// @param takerVolume: amount of currency being taken
 /// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
 /// @param signature: signature associated with maker order
-function partialFill(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public returns (uint256){
+function partialFill(order memory _order,uint256 takerVolume, bytes memory agreementKey, sig memory signature) public {
 
 	// Check if order has been cancelled
 	require(cancelled[_order.orderKey]==false, "Order Has Been Cancelled");
@@ -363,6 +364,95 @@ function partialSettle(order memory _order,uint256 takerVolume, bytes memory agr
 }
     
     
+/// Batch fill fixed-side orders
+/// @param orders: array of orders
+/// @param signatures: array of associated order signatures
+/// @param takerVolume: amount of currency being taken
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+function batchFillFixed(order[] memory orders, sig[] memory signatures, uint256 takerVolume, bytes memory agreementKey) public {
+    
+    uint256 orderCount = orders.length;
+    
+    uint256 amountFilled;
+    
+    
+    // Loop through orders
+    for (uint i=0; i<orderCount; i++) {
+        
+        // Instantiate order
+        order memory _order = orders[i];
+        
+        // Calculate current available volume
+        uint256 availableAgreement = takerVolume - amountFilled;
+        uint256 availableOrder = _order.interest - filled[_order.orderKey];
+        
+        // Check if full fill is possible + fill
+        if (filled[_order.orderKey] == 0 && _order.interest <= availableAgreement) {
+            fill(_order, agreementKey, signatures[i]);
+            amountFilled = amountFilled + _order.interest;
+        }
+        
+        // If full fill is not possible
+        else {
+            // Check which side has the limiting available volume + partialFill
+            if (availableAgreement > availableOrder) {
+                partialFill(_order, availableOrder, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableOrder;
+            }
+            else {
+                partialFill(_order, availableAgreement, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableAgreement;
+            }
+        }
+    }
+}
+
+
+/// Batch fill floating-side orders
+/// @param orders: array of orders
+/// @param signatures: array of associated order signatures
+/// @param takerVolume: amount of currency being taken
+/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
+function batchFillFloating(order[] memory orders, sig[] memory signatures, uint256 takerVolume, bytes memory agreementKey) public {
+    
+    
+    uint256 orderCount = orders.length;
+    
+    uint256 amountFilled;
+    
+    
+    // Loop through orders
+    for (uint i=0; i<orderCount; i++) {
+        
+        // Instantiate order
+        order memory _order = orders[i];
+        
+        // Calculate current available volume
+        uint256 availableAgreement = takerVolume - amountFilled;
+        uint256 availableOrder = _order.principal - filled[_order.orderKey];
+        
+        // Check if full fill is possible
+        if (filled[_order.orderKey] == 0 && _order.principal <= availableAgreement) {
+            fill(_order, agreementKey, signatures[i]);
+            amountFilled = amountFilled + _order.principal;
+        }
+        
+        // If full fill is not possible
+        else {
+            // Check which side has the limiting available volume + partialFill
+            if (availableAgreement > availableOrder) {
+                partialFill(_order, availableOrder, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableOrder;
+            }
+            else {
+                partialFill(_order, availableAgreement, agreementKey, signatures[i]);
+                amountFilled = amountFilled + availableAgreement;
+            }
+        }
+    }
+}
+    
+    
 /// Cancel an order
 /// @param _order: maker's order
 /// @param signature: signature associated with maker's order
@@ -386,133 +476,6 @@ function cancel(order memory _order, sig memory signature) public returns(bool){
     emit cancelledOrder(_order.orderKey);
 
 	return true;
-}
-    
-    
-/// Release an agreement if term completed
-/// @param orderKey: off-chain key generated as keccak hash of User + time + nonce
-/// @param agreementKey: off-chain key generated as keccak hash of User + time + nonce
-function release(bytes memory orderKey, bytes memory agreementKey) public returns(uint256){
-
-	// Require swap state to be active
-	// Require swap duration to have expired
-	require(agreements[orderKey][agreementKey].state == 1, "Already released");
-	require(block.timestamp >= agreements[orderKey][agreementKey].releaseTime, "Agreement term not yet complete");
-
-	cErc20 cToken = cErc20(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb);
-	Erc20 underlying = Erc20(agreements[orderKey][agreementKey].tokenAddress);
-
-	// Logic for a floating-side maker
-	if (agreements[orderKey][agreementKey].side == 1 ) {
-
-		// Calculate annualized interest-rate generated by the swap agreement
-		uint total = agreements[orderKey][agreementKey].principal.add(agreements[orderKey][agreementKey].interest);
-		uint yield = ((cToken.exchangeRateCurrent().mul(100000000000000000000000000)).div(agreements[orderKey][agreementKey].initialRate)).sub(100000000000000000000000000);
-		uint annualizedRate = ((yield.mul(31536000)).div(agreements[orderKey][agreementKey].duration));
-
-		// In order to avoid subtraction underflow, ensures subtraction of smaller annualized rate
-		if (agreements[orderKey][agreementKey].rate > annualizedRate) {
-
-			// Calculates difference between annualized expected rate / real rate 
-			uint rateDifference = (agreements[orderKey][agreementKey].rate).sub(annualizedRate);
-
-			// Calculates differential in expected currency from previous rate differential
-			uint annualFloatingDifference = (rateDifference.mul(total)).div(100000000000000000000000000);
-
-			// De-annualizes the differential for the given time period
-			uint floatingDifference = (annualFloatingDifference.div(31536000)).mul(agreements[orderKey][agreementKey].duration);
-
-			// Calculates difference between value and expected interest
-			uint floatingReturned = (agreements[orderKey][agreementKey].interest).sub(floatingDifference);
-
-			// Redeems appropriate CTokens
-			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(floatingReturned)));
-
-			// Returns funds to appropriate parties
-			underlying.transfer(agreements[orderKey][agreementKey].maker, floatingReturned);
-			underlying.transfer(agreements[orderKey][agreementKey].taker, total);
-
-		}
-
-		if (annualizedRate > agreements[orderKey][agreementKey].rate) {
-			uint rateDifference = annualizedRate.sub(agreements[orderKey][agreementKey].rate);
-			uint annualFloatingDifference = (rateDifference.mul(total)).div(100000000000000000000000000);
-			uint floatingDifference = (annualFloatingDifference.div(31536000)).mul(agreements[orderKey][agreementKey].duration);
-			uint floatingReturned = (agreements[orderKey][agreementKey].interest).add(floatingDifference);
-
-			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(floatingReturned)));
-
-			underlying.transfer(agreements[orderKey][agreementKey].maker, floatingReturned);
-			underlying.transfer(agreements[orderKey][agreementKey].taker, total);
-			}
-
-		if (annualizedRate == agreements[orderKey][agreementKey].rate) {
-
-			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(agreements[orderKey][agreementKey].interest)));
-			
-			underlying.transfer(agreements[orderKey][agreementKey].maker, agreements[orderKey][agreementKey].interest);
-			underlying.transfer(agreements[orderKey][agreementKey].taker, total);
-		}
-	}
-
-	// Logic for a fixed-side maker
-	if (agreements[orderKey][agreementKey].side == 0 ) {
-
-		// Calculate annualized interest-rate generated by the swap agreement
-		uint total = agreements[orderKey][agreementKey].principal.add(agreements[orderKey][agreementKey].interest);
-		uint yield = ((cToken.exchangeRateCurrent().mul(100000000000000000000000000)).div(agreements[orderKey][agreementKey].initialRate)).sub(100000000000000000000000000);
-		uint annualizedRate = ((yield.mul(31536000)).div(agreements[orderKey][agreementKey].duration));
-
-		// In order to avoid subtraction underflow, ensures subtraction of smaller annualized rate
-		if (agreements[orderKey][agreementKey].rate > annualizedRate) {
-
-			// Calculates difference between annualized expected rate / real rate 
-			uint rateDifference = (agreements[orderKey][agreementKey].rate).sub(annualizedRate);
-
-			// Calculates differential in expected currency from previous rate differential
-			uint annualFloatingDifference = (rateDifference.mul(total)).div(100000000000000000000000000);
-
-			// De-annualizes the differential for the given time period
-			uint floatingDifference = (annualFloatingDifference.div(31536000)).mul(agreements[orderKey][agreementKey].duration);
-
-			// Calculates difference between value and expected interest
-			uint floatingReturned = (agreements[orderKey][agreementKey].interest).sub(floatingDifference);
-
-			// Redeems appropriate CTokens
-			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(floatingReturned)));
-
-			// Returns funds to appropriate parties
-			underlying.transfer(agreements[orderKey][agreementKey].maker, total);
-			underlying.transfer(agreements[orderKey][agreementKey].taker, floatingReturned);
-		}
-
-		if (annualizedRate > agreements[orderKey][agreementKey].rate) {
-			uint rateDifference = annualizedRate.sub(agreements[orderKey][agreementKey].rate);
-			uint annualFloatingDifference = (rateDifference.mul(total)).div(100000000000000000000000000);
-			uint floatingDifference = (annualFloatingDifference.div(31536000)).mul(agreements[orderKey][agreementKey].duration);
-			uint floatingReturned = (agreements[orderKey][agreementKey].interest).add(floatingDifference);
-
-			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(floatingReturned)));
-
-			underlying.transfer(agreements[orderKey][agreementKey].maker, total);
-			underlying.transfer(agreements[orderKey][agreementKey].taker, floatingReturned);
-		}
-
-		if (annualizedRate == agreements[orderKey][agreementKey].rate) {
-
-			redeemCToken(0x822397d9a55d0fefd20F5c4bCaB33C5F65bd28Eb,(total.add(agreements[orderKey][agreementKey].interest)));
-
-			underlying.transfer(agreements[orderKey][agreementKey].maker, total);
-			underlying.transfer(agreements[orderKey][agreementKey].taker, agreements[orderKey][agreementKey].interest);
-		}
-	}
-
-	// Change state to Expired
-	agreements[orderKey][agreementKey].state = 2;
-
-	emit released(orderKey,agreementKey);
-
-	return(agreements[orderKey][agreementKey].state);				
 }
 
 /// Release an agreement if term completed
