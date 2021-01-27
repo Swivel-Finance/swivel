@@ -397,7 +397,7 @@ function partialSettleFloating(order memory _order,uint256 takerVolume, bytes me
 	
 	agreements[_order.orderKey][agreementKey] = _agreement;
 
-    filled[_order.orderKey] = takerVolume;
+    	filled[_order.orderKey] += takerVolume;
     
 	// Push agreementKey to orderTakers
 	orderTakers[_order.orderKey].push(agreementKey);
@@ -490,7 +490,7 @@ function partialSettleFixed(order memory _order,uint256 takerVolume, bytes memor
 	
 	agreements[_order.orderKey][agreementKey] = _agreement;
 
-    filled[_order.orderKey] = takerVolume;
+    	filled[_order.orderKey] += takerVolume;
     
 	// Push agreementKey to orderTakers
 	orderTakers[_order.orderKey].push(agreementKey);
