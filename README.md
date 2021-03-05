@@ -5,4 +5,4 @@
 Swivel smart contracts are located here, stored by version. Their associated `abi` and `bin` compilation artifacts are also here for convenience.
 
 ## deployments
-* Goerli: 0x416D738C564C2062F22Af6232406899C6bc72AAe
+* Goerli: 0x83c9596857A8A3b9Df98952E43EB112BfE8a7624
