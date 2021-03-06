@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	client, err := ethclient.Dial(fmt.Sprintf("https://goerli.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
+	client, err := ethclient.Dial(fmt.Sprintf("https://kovan.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func main() {
 	// goerli
 	chainId := big.NewInt(5)
 	// goerli
-	cDai := common.HexToAddress("0x822397d9a55d0fefd20f5c4bcab33c5f65bd28eb")
+	cDai := common.HexToAddress("0x6d7f0754ffeb405d23c51ce938289d4835be3b14")
 	// verifier, allowing to default to `this` by passing "zero address"
 	zero := common.HexToAddress("0x0")
 	address, tx, _, err := swivel.DeploySwivel(auth, client, chainId, cDai, zero)
