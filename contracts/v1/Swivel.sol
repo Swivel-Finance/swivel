@@ -147,6 +147,7 @@ contract Swivel {
   }
 
   function cancel(Hash.Order calldata o, Sig.Components calldata c) public returns (bool) {
+    require(o.maker == msg.sender || o.maker == tx.origin);
     require(o.maker == Sig.recover(Hash.message(DOMAIN, Hash.order(o)), c), 'invalid signature');
 
     cancelled[o.key] = true;
@@ -180,7 +181,7 @@ contract Swivel {
     require(uToken.transferFrom(o.maker, address(this), newAgreement.interest), 'transfer from maker failed');
     require(uToken.transferFrom(msg.sender, address(this), newAgreement.principal), 'transfer from taker failed');
     // mint compound
-    require(mintCToken(o.underlying, o.interest + o.principal) > 0, 'CToken minting failed');
+    require(mintCToken(o.underlying, o.interest + o.principal) == 0, 'CToken minting failed');
 
     // finish setting new agreement props and store
     CErc20 cToken = CErc20(CTOKEN);
