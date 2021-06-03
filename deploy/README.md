@@ -5,4 +5,5 @@
 * `cd cmd && go run main.go`
 
 ### Notes
-You may want to adjust the `auth.GasLimit` and set a `verifier` (you can see it is, ATM, set to `zero`)
+* You may want to adjust the `auth.GasLimit`.
+* Will always deploy the latest version of the protocol.

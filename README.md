@@ -7,5 +7,9 @@
 Swivel smart contracts are located here, stored by version. Their associated `abi` and `bin` compilation artifacts are also here for convenience.
 
 ## deployments
-* Goerli: 0xD3ca4c8Da849B81C4036c67AA81a20d8d551b3A5
-* Kovan: 0xdd644f221Eec4Fbe1B89C74bC7b276A0a2b8818f
+* Goerli:
+  * MarketPlace: 0xC23570532C130bD1c86f33eB9fA5581e4896F29c
+  * Swivel: 0x40eb09d3917fFcd1AeC50bAA8644db52f59B9C17
+* Rinkeby:
+  * MarketPlace: 0xc078Ae76aEdf9150359ef5470A5C0b51a508bC79
+  * Swivel: 0x5FC6f550f2965F1AB5ACD8eA145518ddC40deE57
