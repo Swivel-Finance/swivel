@@ -17,8 +17,11 @@ import (
 )
 
 func main() {
+	// rinkeby
+	client, err := ethclient.Dial(fmt.Sprintf("https://rinkeby.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
+
 	// goerli
-	client, err := ethclient.Dial(fmt.Sprintf("https://goerli.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
+	// client, err := ethclient.Dial(fmt.Sprintf("https://goerli.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
 
 	// kovan
 	// client, err := ethclient.Dial(fmt.Sprintf("https://kovan.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
@@ -76,6 +79,8 @@ func main() {
 
 	// fmt.Println("Deploying Swivel...")
 
+	marketAddr := common.HexToAddress("0xc078Ae76aEdf9150359ef5470A5C0b51a508bC79")
+
 	// swivelAddr, tx, _, err := swivel.DeploySwivel(auth, client, marketAddr)
 	// if err != nil {
 	// 	log.Fatal(err)
@@ -92,11 +97,10 @@ func main() {
 
 	fmt.Println("Setting Swivel address in Marketplace...")
 
-	marketAddr := "0xC23570532C130bD1c86f33eB9fA5581e4896F29c"
-	swivelAddr := "0x40eb09d3917fFcd1AeC50bAA8644db52f59B9C17"
+	swivelAddr := "0x5FC6f550f2965F1AB5ACD8eA145518ddC40deE57"
 
 	// get the deployed marketplace...
-	marketCont, err := marketplace.NewMarketPlace(common.HexToAddress(marketAddr), client)
+	marketCont, err := marketplace.NewMarketPlace(marketAddr, client)
 	if err != nil {
 		log.Fatal(err)
 	}
