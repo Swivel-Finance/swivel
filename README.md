@@ -2,17 +2,21 @@
 
 <img src="https://user-images.githubusercontent.com/62613746/111923535-1cddbd00-8a76-11eb-80fa-853acfc789e3.png" width="400px">
 
-
 ## contracts
 Swivel smart contracts are located here, stored by version. Their associated `abi` and `bin` compilation artifacts are also here for convenience.
 
-## swivel-v2
-#### todo - contract heirarchy 
+### v2
+The currently deployed *v2* protocol is located here:
+* swivel/
+  * The `.sol`, `.abi` and `.bin` files for Swivel.sol and its dependencies
+* marketplace/
+  * The `.sol`, `.abi` and `.bin` files for MarketPlace.sol and its dependencies
 
-## deployments
-* Goerli:
-  * MarketPlace: 0xC23570532C130bD1c86f33eB9fA5581e4896F29c
-  * Swivel: 0x40eb09d3917fFcd1AeC50bAA8644db52f59B9C17
+### deployment
+We use the Geth ABIGEN tool to generate golang bindings for our smart contracts. We use those bindings to deploy the contracts with the
+`deploy` project in this repo. see `/deploy/cmd/main.go` for the script itself or `/deploy/internal/*` to view the bindings themselves.
+
+## current deployments
 * Rinkeby:
-  * MarketPlace: 0xc078Ae76aEdf9150359ef5470A5C0b51a508bC79
-  * Swivel: 0x5FC6f550f2965F1AB5ACD8eA145518ddC40deE57
+  * MarketPlace: 0xD50c1b541858FFa49D5cCaA2369FfB97579277c3
+  * Swivel: 0x63c2D9A0Daa54c142630011CadFa1f43d73069C8

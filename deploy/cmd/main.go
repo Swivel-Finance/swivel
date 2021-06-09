@@ -70,7 +70,7 @@ func main() {
 	// fmt.Printf("Deployed to: %v\n", marketAddr.Hex())
 	// fmt.Printf("Transaction hash: %v\n", tx.Hash().Hex())
 
-	// now swivel with market address... (update the nonce first)
+	// now swivel with market address... (update the nonce first if necessary)
 	// nonce, err = client.PendingNonceAt(context.Background(), fromAddress)
 	// if err != nil {
 	// 	log.Fatal(err)
@@ -79,7 +79,7 @@ func main() {
 
 	// fmt.Println("Deploying Swivel...")
 
-	marketAddr := common.HexToAddress("0xc078Ae76aEdf9150359ef5470A5C0b51a508bC79")
+	marketAddr := common.HexToAddress("0xD50c1b541858FFa49D5cCaA2369FfB97579277c3")
 
 	// swivelAddr, tx, _, err := swivel.DeploySwivel(auth, client, marketAddr)
 	// if err != nil {
@@ -97,7 +97,7 @@ func main() {
 
 	fmt.Println("Setting Swivel address in Marketplace...")
 
-	swivelAddr := "0x5FC6f550f2965F1AB5ACD8eA145518ddC40deE57"
+	swivelAddr := "0x63c2D9A0Daa54c142630011CadFa1f43d73069C8"
 
 	// get the deployed marketplace...
 	marketCont, err := marketplace.NewMarketPlace(marketAddr, client)
