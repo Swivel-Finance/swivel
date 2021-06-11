@@ -79,7 +79,7 @@ func main() {
 
 	// fmt.Println("Deploying Swivel...")
 
-	marketAddr := common.HexToAddress("0xD50c1b541858FFa49D5cCaA2369FfB97579277c3")
+	marketAddr := common.HexToAddress("0x6a6BeC42A5Dd6F2766F806F91Ad12034F43b6361")
 
 	// swivelAddr, tx, _, err := swivel.DeploySwivel(auth, client, marketAddr)
 	// if err != nil {
@@ -97,7 +97,7 @@ func main() {
 
 	fmt.Println("Setting Swivel address in Marketplace...")
 
-	swivelAddr := "0x63c2D9A0Daa54c142630011CadFa1f43d73069C8"
+	swivelAddr := "0x416D738C564C2062F22Af6232406899C6bc72AAe"
 
 	// get the deployed marketplace...
 	marketCont, err := marketplace.NewMarketPlace(marketAddr, client)
