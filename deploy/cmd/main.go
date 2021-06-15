@@ -9,11 +9,9 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
+	// "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/swivel-finance/swivel/deploy/internal/marketplace"
-	// "github.com/swivel-finance/swivel/deploy/internal/swivel"
 )
 
 func main() {
@@ -59,56 +57,24 @@ func main() {
 	// auth.GasPrice = gasPrice.Mul(gasPrice, big.NewInt(2))
 	auth.GasPrice = gasPrice
 
-	// deploy marketplace first...
-	// fmt.Println("Deploying MarketPlace...")
+	/*
+		We simply turn these steps on and off by commenting them.
+		TODO we _could_ automate it by waiting for receipts etc...
 
-	// marketAddr, tx, _, err := marketplace.DeployMarketPlace(auth, client)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+		1. deploy marketplace
+		   a. update marketplace address var
+		2. deploy swivel
+		   a. update swivel address var
+		3. set swivel address in deployed marketplace
+		4. create any desired markets
+	*/
 
-	// fmt.Printf("Deployed to: %v\n", marketAddr.Hex())
-	// fmt.Printf("Transaction hash: %v\n", tx.Hash().Hex())
+	// TODO we dont return the address here as we don't try to chain them atm
+	deployMarketplace(auth, client)
+	// marketAddr := common.HexToAddress("")
 
-	// now swivel with market address... (update the nonce first if necessary)
-	// nonce, err = client.PendingNonceAt(context.Background(), fromAddress)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// auth.Nonce = big.NewInt(int64(nonce))
+	// deploySwivel(auth, client, marketAddr)
+	// swivelAddr := common.HexToAddress("")
 
-	// fmt.Println("Deploying Swivel...")
-
-	marketAddr := common.HexToAddress("0x6a6BeC42A5Dd6F2766F806F91Ad12034F43b6361")
-
-	// swivelAddr, tx, _, err := swivel.DeploySwivel(auth, client, marketAddr)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// fmt.Printf("Deployed to: %v\n", swivelAddr.Hex())
-	// fmt.Printf("Transaction hash: %v\n", tx.Hash().Hex())
-
-	// set the swivel address in the marketplace (wait and confirm the above blocks have mined)
-	opts := &bind.TransactOpts{
-		From:   auth.From,
-		Signer: auth.Signer,
-	}
-
-	fmt.Println("Setting Swivel address in Marketplace...")
-
-	swivelAddr := "0x416D738C564C2062F22Af6232406899C6bc72AAe"
-
-	// get the deployed marketplace...
-	marketCont, err := marketplace.NewMarketPlace(marketAddr, client)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tx, err := marketCont.SetSwivelAddress(opts, common.HexToAddress(swivelAddr))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("Transaction hash: %v\n", tx.Hash().Hex())
+	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 }
