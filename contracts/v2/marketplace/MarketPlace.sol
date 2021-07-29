@@ -11,9 +11,6 @@ import './ZcToken.sol';
 import './VaultTracker.sol';
 
 contract MarketPlace {
-  address public admin = msg.sender;
-  address public swivel;
-
   struct Market {
     address cTokenAddr;
     address zcTokenAddr;
@@ -23,6 +20,9 @@ contract MarketPlace {
   mapping (address => mapping (uint256 => Market)) public markets;
   mapping (address => mapping (uint256 => bool)) public mature;
   mapping (address => mapping (uint256 => uint256)) public maturityRate;
+
+  address public immutable admin;
+  address public swivel;
 
   event Create(address indexed underlying, uint256 indexed maturity, address cToken, address zcToken);
   event Mature(address indexed underlying, uint256 indexed maturity, uint256 maturityRate, uint256 matured);
@@ -34,6 +34,11 @@ contract MarketPlace {
   event P2pVaultExchange(address indexed underlying, uint256 indexed maturity, address from, address to, uint256 amount);
   event TransferVaultNotional(address indexed underlying, uint256 indexed maturity, address from, address to, uint256 amount);
 
+  constructor() {
+    admin = msg.sender;
+  }
+
+  /// @param s Address of the deployed swivel contract
   function setSwivelAddress(address s) external onlyAdmin(admin) returns (bool) {
     swivel = s;
     return true;
@@ -66,18 +71,17 @@ contract MarketPlace {
   /// @param u Underlying token address associated with the market
   /// @param m Maturity timestamp of the market
   function matureMarket(address u, uint256 m) public returns (bool) {
-    require(mature[u][m] == false, 'market already matured');
+    require(!mature[u][m], 'market already matured');
     require(block.timestamp >= ZcToken(markets[u][m].zcTokenAddr).maturity(), "maturity not reached");
 
     // Set the base maturity cToken exchange rate at maturity to the current cToken exchange rate
     uint256 currentExchangeRate = CErc20(markets[u][m].cTokenAddr).exchangeRateCurrent();
     maturityRate[u][m] = currentExchangeRate;
-
-    // Set Floating Market "matured" to true
-    require(VaultTracker(markets[u][m].vaultAddr).matureVault() == true, 'maturity not reached');
-
     // Set the maturity state to true (for zcb market)
     mature[u][m] = true;
+
+    // Set Floating Market "matured" to true
+    require(VaultTracker(markets[u][m].vaultAddr).matureVault(), 'maturity not reached');
 
     emit Mature(u, m, block.timestamp, currentExchangeRate);
 
@@ -90,33 +94,32 @@ contract MarketPlace {
   /// @param a Amount of zcTokens being redeemed
   function redeemZcToken(address u, uint256 m, uint256 a) public returns (bool) {
     // If market hasn't matured, mature it and redeem exactly the amount
-    if (mature[u][m] == false) {
+
+    Market memory mkt = markets[u][m];
+
+    if (!mature[u][m]) {
       // Attempt to Mature it
-      require(matureMarket(u, m) == true, 'failed to mature the market');
+      require(matureMarket(u, m), 'failed to mature the market');
 
       // Burn user's zcTokens
-      require(ZcToken(markets[u][m].zcTokenAddr).burn(msg.sender, a), 'could not burn');
+      require(ZcToken(mkt.zcTokenAddr).burn(msg.sender, a), 'could not burn');
 
       // Redeem principleReturned of underlying token to Swivel Contract from Compound
-      require(CErc20(markets[u][m].cTokenAddr).redeemUnderlying(a) == 0 ,'cToken redemption failed');
+      require(CErc20(mkt.cTokenAddr).redeemUnderlying(a) == 0 ,'cToken redemption failed');
 
       // Transfer the principleReturned in underlying tokens to the user
-      require(Erc20(u).transfer(msg.sender, a), 'transfer of redemption failed');
-    }
-    // If market has matured, redeem the amount + the marginal floating interest generated on Compound since maturity
-    else {
-      // Burn user's zcTokens
-      require(ZcToken(markets[u][m].zcTokenAddr).burn(msg.sender, a), 'could not burn');
+      Erc20(u).transfer(msg.sender, a);
+    } else { // If market has matured, redeem the amount + the marginal floating interest generated on Compound since maturity
+      require(ZcToken(mkt.zcTokenAddr).burn(msg.sender, a), 'could not burn'); // Burn user's zcTokens
 
       // Call internal function to determine the amount of principle to return (including marginal interest since maturity)
       uint256 principleReturned = calculateReturn(u, m, a);
 
       // Redeem principleReturned of underlying token to Swivel Contract from Compound
-      require(CErc20(markets[u][m].cTokenAddr).redeemUnderlying(principleReturned) == 0 ,'cToken redemption failed');
+      require(CErc20(mkt.cTokenAddr).redeemUnderlying(principleReturned) == 0 ,'cToken redemption failed');
 
       // Transfer the principleReturned in underlying tokens to the user
-      require(Erc20(u).transfer(msg.sender, principleReturned), 'transfer of redemption failed');
-
+      Erc20(u).transfer(msg.sender, principleReturned);
     }
 
     emit RedeemZcToken(u, m, msg.sender, a);
@@ -132,10 +135,10 @@ contract MarketPlace {
     uint256 interestGenerated = VaultTracker(markets[u][m].vaultAddr).redeemInterest(msg.sender);
 
     // Redeem the interest generated by the position to Swivel Contract from Compound
-    require(CErc20(markets[u][m].cTokenAddr).redeemUnderlying(interestGenerated) == 0, "redemption from Compound Failed");
+    require(CErc20(markets[u][m].cTokenAddr).redeemUnderlying(interestGenerated) == 0, "redemption from Compound failed");
 
     // Transfer the interest generated in underlying tokens to the user
-    require(Erc20(u).transfer(msg.sender, interestGenerated), 'transfer of redeemable failed');
+    Erc20(u).transfer(msg.sender, interestGenerated);
 
     emit RedeemVaultInterest(u, m, msg.sender);
 
@@ -222,7 +225,7 @@ contract MarketPlace {
   /// @param t Target to be transferred to
   /// @param a Amount of notional to be transferred
   function transferVaultNotional(address u, uint256 m, address t, uint256 a) public returns (bool) {
-    require(VaultTracker(markets[u][m].vaultAddr).transferNotional(msg.sender, t, a), 'vault transfer failed');
+    require(VaultTracker(markets[u][m].vaultAddr).transferNotionalFrom(msg.sender, t, a), 'vault transfer failed');
     emit TransferVaultNotional(u, m, msg.sender, t, a);
     return true;
   }
@@ -233,7 +236,7 @@ contract MarketPlace {
   }
 
   modifier onlySwivel(address s) {
-    require(msg.sender == s, 'sender must be swivel contract');
+    require(msg.sender == s, 'sender must be Swivel contract');
     _;
   }
 }
