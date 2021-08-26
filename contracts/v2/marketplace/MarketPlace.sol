@@ -11,9 +11,6 @@ import './ZcToken.sol';
 import './VaultTracker.sol';
 
 contract MarketPlace {
-  address public admin = msg.sender;
-  address public swivel;
-
   struct Market {
     address cTokenAddr;
     address zcTokenAddr;
@@ -24,7 +21,10 @@ contract MarketPlace {
   mapping (address => mapping (uint256 => bool)) public mature;
   mapping (address => mapping (uint256 => uint256)) public maturityRate;
 
-  event Create(address indexed underlying, uint256 indexed maturity, address cToken, address zcToken);
+  address public immutable admin;
+  address public swivel;
+
+  event Create(address indexed underlying, uint256 indexed maturity, address cToken, address zcToken, address vaultTracker);
   event Mature(address indexed underlying, uint256 indexed maturity, uint256 maturityRate, uint256 matured);
   event RedeemZcToken(address indexed underlying, uint256 indexed maturity, address indexed sender, uint256 amount);
   event RedeemVaultInterest(address indexed underlying, uint256 indexed maturity, address indexed sender);
@@ -34,6 +34,11 @@ contract MarketPlace {
   event P2pVaultExchange(address indexed underlying, uint256 indexed maturity, address from, address to, uint256 amount);
   event TransferVaultNotional(address indexed underlying, uint256 indexed maturity, address from, address to, uint256 amount);
 
+  constructor() {
+    admin = msg.sender;
+  }
+
+  /// @param s Address of the deployed swivel contract
   function setSwivelAddress(address s) external onlyAdmin(admin) returns (bool) {
     swivel = s;
     return true;
@@ -50,14 +55,16 @@ contract MarketPlace {
     uint256 m,
     address c,
     string memory n,
-    string memory s
+    string memory s,
+    uint8 d
   ) public onlyAdmin(admin) returns (bool) {
+    require(swivel != address(0), 'swivel contract address not set');
     // TODO can we live with the factory pattern here both bytecode size wise and CREATE opcode cost wise?
-    address zctAddr = address(new ZcToken(u, m, n, s));
-    address vAddr = address(new VaultTracker(m, c));
+    address zctAddr = address(new ZcToken(u, m, n, s, d));
+    address vAddr = address(new VaultTracker(m, c, swivel));
     markets[u][m] = Market(c, zctAddr, vAddr);
 
-    emit Create(u, m, c, zctAddr);
+    emit Create(u, m, c, zctAddr, vAddr);
 
     return true;
   }
@@ -66,21 +73,44 @@ contract MarketPlace {
   /// @param u Underlying token address associated with the market
   /// @param m Maturity timestamp of the market
   function matureMarket(address u, uint256 m) public returns (bool) {
-    require(mature[u][m] == false, 'market already matured');
+    require(!mature[u][m], 'market already matured');
     require(block.timestamp >= ZcToken(markets[u][m].zcTokenAddr).maturity(), "maturity not reached");
 
     // Set the base maturity cToken exchange rate at maturity to the current cToken exchange rate
     uint256 currentExchangeRate = CErc20(markets[u][m].cTokenAddr).exchangeRateCurrent();
     maturityRate[u][m] = currentExchangeRate;
-
-    // Set Floating Market "matured" to true
-    require(VaultTracker(markets[u][m].vaultAddr).matureVault() == true, 'maturity not reached');
-
     // Set the maturity state to true (for zcb market)
     mature[u][m] = true;
 
+    // Set Floating Market "matured" to true
+    require(VaultTracker(markets[u][m].vaultAddr).matureVault(), 'maturity not reached');
+
     emit Mature(u, m, block.timestamp, currentExchangeRate);
 
+    return true;
+  }
+
+  /// @notice Allows Swivel caller to deposit their underlying, in the process splitting it - minting both zcTokens and vault notional.
+  /// @param u Underlying token address associated with the market
+  /// @param m Maturity timestamp of the market
+  /// @param t Address of the depositing user
+  /// @param a Amount of notional being added
+  function mintZcTokenAddingNotional(address u, uint256 m, address t, uint256 a) external onlySwivel(swivel) returns (bool) {
+    require(ZcToken(markets[u][m].zcTokenAddr).mint(t, a), 'mint zcToken failed');
+    require(VaultTracker(markets[u][m].vaultAddr).addNotional(t, a), 'add notional failed');
+    
+    return true;
+  }
+
+  /// @notice Allows Swivel caller to deposit/burn both zcTokens + vault notional. This process is "combining" the two and redeeming underlying.
+  /// @param u Underlying token address associated with the market
+  /// @param m Maturity timestamp of the market
+  /// @param t Address of the combining/redeeming user
+  /// @param a Amount of zcTokens being burned
+  function burnZcTokenRemovingNotional(address u, uint256 m, address t, uint256 a) external onlySwivel(swivel) returns(bool) {
+    require(ZcToken(markets[u][m].zcTokenAddr).burn(t, a), 'burn failed');
+    require(VaultTracker(markets[u][m].vaultAddr).removeNotional(t, a), 'remove notional failed');
+    
     return true;
   }
 
@@ -90,33 +120,32 @@ contract MarketPlace {
   /// @param a Amount of zcTokens being redeemed
   function redeemZcToken(address u, uint256 m, uint256 a) public returns (bool) {
     // If market hasn't matured, mature it and redeem exactly the amount
-    if (mature[u][m] == false) {
+
+    Market memory mkt = markets[u][m];
+
+    if (!mature[u][m]) {
       // Attempt to Mature it
-      require(matureMarket(u, m) == true, 'failed to mature the market');
+      require(matureMarket(u, m), 'failed to mature the market');
 
       // Burn user's zcTokens
-      require(ZcToken(markets[u][m].zcTokenAddr).burn(msg.sender, a), 'could not burn');
+      require(ZcToken(mkt.zcTokenAddr).burn(msg.sender, a), 'could not burn');
 
       // Redeem principleReturned of underlying token to Swivel Contract from Compound
-      require(CErc20(markets[u][m].cTokenAddr).redeemUnderlying(a) == 0 ,'cToken redemption failed');
+      require(CErc20(mkt.cTokenAddr).redeemUnderlying(a) == 0 ,'cToken redemption failed');
 
       // Transfer the principleReturned in underlying tokens to the user
-      require(Erc20(u).transfer(msg.sender, a), 'transfer of redemption failed');
-    }
-    // If market has matured, redeem the amount + the marginal floating interest generated on Compound since maturity
-    else {
-      // Burn user's zcTokens
-      require(ZcToken(markets[u][m].zcTokenAddr).burn(msg.sender, a), 'could not burn');
+      Erc20(u).transfer(msg.sender, a);
+    } else { // If market has matured, redeem the amount + the marginal floating interest generated on Compound since maturity
+      require(ZcToken(mkt.zcTokenAddr).burn(msg.sender, a), 'could not burn'); // Burn user's zcTokens
 
       // Call internal function to determine the amount of principle to return (including marginal interest since maturity)
       uint256 principleReturned = calculateReturn(u, m, a);
 
       // Redeem principleReturned of underlying token to Swivel Contract from Compound
-      require(CErc20(markets[u][m].cTokenAddr).redeemUnderlying(principleReturned) == 0 ,'cToken redemption failed');
+      require(CErc20(mkt.cTokenAddr).redeemUnderlying(principleReturned) == 0 ,'cToken redemption failed');
 
       // Transfer the principleReturned in underlying tokens to the user
-      require(Erc20(u).transfer(msg.sender, principleReturned), 'transfer of redemption failed');
-
+      Erc20(u).transfer(msg.sender, principleReturned);
     }
 
     emit RedeemZcToken(u, m, msg.sender, a);
@@ -132,10 +161,10 @@ contract MarketPlace {
     uint256 interestGenerated = VaultTracker(markets[u][m].vaultAddr).redeemInterest(msg.sender);
 
     // Redeem the interest generated by the position to Swivel Contract from Compound
-    require(CErc20(markets[u][m].cTokenAddr).redeemUnderlying(interestGenerated) == 0, "redemption from Compound Failed");
+    require(CErc20(markets[u][m].cTokenAddr).redeemUnderlying(interestGenerated) == 0, "redemption from Compound failed");
 
     // Transfer the interest generated in underlying tokens to the user
-    require(Erc20(u).transfer(msg.sender, interestGenerated), 'transfer of redeemable failed');
+    Erc20(u).transfer(msg.sender, interestGenerated);
 
     emit RedeemVaultInterest(u, m, msg.sender);
 
@@ -193,11 +222,12 @@ contract MarketPlace {
   /// @dev call with underlying, maturity, transfer-from, transfer-to, amount
   /// @param u Underlying token address associated with the market
   /// @param m Maturity timestamp of the market
-  /// @param f Owner of the zcToken to be transferred
-  /// @param t Target to be transferred to
+  /// @param f Owner of the zcToken to be burned
+  /// @param t Target to be minted to
   /// @param a Amount of zcToken transfer
   function p2pZcTokenExchange(address u, uint256 m, address f, address t, uint256 a) external onlySwivel(swivel) returns (bool) {
-    require(ZcToken(markets[u][m].zcTokenAddr).transferFrom(f, t, a), 'zcToken transfer failed');
+    require(ZcToken(markets[u][m].zcTokenAddr).burn(f, a), 'zcToken burn failed');
+    require(ZcToken(markets[u][m].zcTokenAddr).mint(t, a), 'zcToken mint failed');
     emit P2pZcTokenExchange(u, m, f, t, a);
     return true;
   }
@@ -222,8 +252,18 @@ contract MarketPlace {
   /// @param t Target to be transferred to
   /// @param a Amount of notional to be transferred
   function transferVaultNotional(address u, uint256 m, address t, uint256 a) public returns (bool) {
-    require(VaultTracker(markets[u][m].vaultAddr).transferNotional(msg.sender, t, a), 'vault transfer failed');
+    require(VaultTracker(markets[u][m].vaultAddr).transferNotionalFrom(msg.sender, t, a), 'vault transfer failed');
     emit TransferVaultNotional(u, m, msg.sender, t, a);
+    return true;
+  }
+
+  /// @notice transfers notional fee to the Swivel contract without recalculating marginal interest for from
+  /// @param u Underlying token address associated with the market
+  /// @param m Maturity timestamp of the market
+  /// @param f Owner of the amount
+  /// @param a Amount to transfer
+  function transferVaultNotionalFee(address u, uint256 m, address f, uint256 a) public onlySwivel(swivel) returns (bool) {
+    VaultTracker(markets[u][m].vaultAddr).transferNotionalFee(f, a);
     return true;
   }
 
@@ -233,7 +273,7 @@ contract MarketPlace {
   }
 
   modifier onlySwivel(address s) {
-    require(msg.sender == s, 'sender must be swivel contract');
+    require(msg.sender == s, 'sender must be Swivel contract');
     _;
   }
 }
