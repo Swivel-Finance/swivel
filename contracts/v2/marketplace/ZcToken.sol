@@ -5,23 +5,25 @@
 
 pragma solidity 0.8.4;
 
-import './ERC2612.sol';
+import './Erc2612.sol';
 import './IZcToken.sol';
 
-/// NOTE the OZStlye naming conventions are kept for the OZ dependencies
-contract ZcToken is ERC2612, IZcToken {
-  address public admin;
-  address public underlying;
-  uint256 public maturity;
+/// NOTE the OZStlye naming conventions are kept for the internal methods
+/// _burn and _mint as dangling underscores are generally not allowed.
+contract ZcToken is Erc2612, IZcToken {
+  address public immutable admin;
+  address public immutable underlying;
+  uint256 public immutable maturity;
 
   /// @param u Underlying
   /// @param m Maturity
   /// @param n Name
   /// @param s Symbol
-  constructor(address u, uint256 m, string memory n, string memory s) ERC2612(n, s) {
-      underlying = u;
-      maturity = m;
-      admin = msg.sender;
+  /// @param d Decimals
+  constructor(address u, uint256 m, string memory n, string memory s, uint8 d) Erc2612(n, s, d) {
+    admin = msg.sender;  
+    underlying = u;
+    maturity = m;
   }
   
   /// @param f Address to burn from

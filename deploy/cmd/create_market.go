@@ -12,7 +12,7 @@ import (
 	"github.com/swivel-finance/swivel/deploy/internal/marketplace"
 )
 
-func createMarket(a *bind.TransactOpts, c *ethclient.Client, m common.Address) {
+func createMarket(a *bind.TransactOpts, c *ethclient.Client, m common.Address, d uint8) {
 	opts := &bind.TransactOpts{
 		From:   a.From,
 		Signer: a.Signer,
@@ -32,10 +32,10 @@ func createMarket(a *bind.TransactOpts, c *ethclient.Client, m common.Address) {
 	// year := big.NewInt(31536000)
 	sixMo := big.NewInt(15780000)
 	maturity := now.Add(now, sixMo)
-	name := "Test Market 2"
-	symbol := "TM2"
+	name := "Test Market 3"
+	symbol := "TM3"
 
-	tx, err := marketCont.CreateMarket(opts, underlying, maturity, cTokenAddr, name, symbol)
+	tx, err := marketCont.CreateMarket(opts, underlying, maturity, cTokenAddr, name, symbol, d)
 	if err != nil {
 		log.Fatal(err)
 	}
