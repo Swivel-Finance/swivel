@@ -18,5 +18,5 @@ We use the Geth ABIGEN tool to generate golang bindings for our smart contracts.
 
 ## current deployments
 * Rinkeby:
-  * MarketPlace: 0xE0B15B137BFcd7294eF7A8988B2eA893c30c557E
-  * Swivel: 0xBfA179Aa38e0A0fC1947cc2C438DEBEe72ae4809
+  * MarketPlace: 0xA496a197994a1999D851732415677e8eF9eEa0b9
+  * Swivel: 0xfe74Ec127bC1677FD705CF0430DCef2C1b8E651A
