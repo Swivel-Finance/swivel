@@ -79,5 +79,5 @@ func main() {
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
 	// NOTE be sure to set the correct number of decimals for the market (zctoken) you are creating
-	createMarket(auth, client, marketAddr, uint8(18))
+	createMarket(auth, client, marketAddr, uint8(6))
 }
