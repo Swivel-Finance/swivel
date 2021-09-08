@@ -31,7 +31,7 @@ func createMarket(a *bind.TransactOpts, c *ethclient.Client, m common.Address, d
 	// maturity - 9/1/22
 	// maturity := big.NewInt(1662089767)
 	// name := "DAI-1662089767"
-	// symbol := "ZcDAI"
+	// symbol := "zcDAI"
 
 	// ******************* USDC *********************************************
 	underlying := common.HexToAddress("0x4dbcdf9b62e891a7cec5a2568c3f4faf9e8abe2b")
@@ -39,7 +39,7 @@ func createMarket(a *bind.TransactOpts, c *ethclient.Client, m common.Address, d
 	// maturity - 9/31/21
 	maturity := big.NewInt(1633059407)
 	name := "USDC-1633059407"
-	symbol := "ZcUSDC"
+	symbol := "zcUSDC"
 
 	tx, err := marketCont.CreateMarket(opts, underlying, maturity, cTokenAddr, name, symbol, d)
 	if err != nil {

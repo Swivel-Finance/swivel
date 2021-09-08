@@ -71,13 +71,13 @@ func main() {
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	marketAddr := common.HexToAddress("0xA496a197994a1999D851732415677e8eF9eEa0b9")
+	marketAddr := common.HexToAddress("0xeb389e2796E081FBb5C032F3D307CD5E6b438D78")
 
 	// deploySwivel(auth, client, marketAddr)
-	// swivelAddr := common.HexToAddress("0xfe74Ec127bC1677FD705CF0430DCef2C1b8E651A")
+	// swivelAddr := common.HexToAddress("0xDe9a819630094dF6dA6FF7CCc77E04Fd3ad0ACFE")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
-	// NOTE be sure to set the correct number of decimals for the market (zctoken) you are creating
+	// NOTE be sure to set the correct number of decimals for the market (zctoken) you are creating (18 dai, 6 usdc)
 	createMarket(auth, client, marketAddr, uint8(6))
 }
