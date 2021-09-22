@@ -3,20 +3,26 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
+	// "fmt"
 	"log"
 	"math/big"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
+	// "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 func main() {
-	// rinkeby
-	client, err := ethclient.Dial(fmt.Sprintf("https://rinkeby.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
+	// rinkeby chainid
+	chainId := big.NewInt(4)
+
+	// rinkeby infura
+	// client, err := ethclient.Dial(fmt.Sprintf("https://rinkeby.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
+
+	// rinkeby quicknode
+	client, err := ethclient.Dial("https://red-icy-surf.rinkeby.quiknode.pro/0cbdd13f2a541b199f1fb70ecc0481d9c452ae01/")
 
 	// goerli
 	// client, err := ethclient.Dial(fmt.Sprintf("https://goerli.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
@@ -50,7 +56,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	auth := bind.NewKeyedTransactor(privateKey)
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainId)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)      // in wei
 	auth.GasLimit = uint64(8000000) // let's see if 8 mill will go...
@@ -71,13 +81,13 @@ func main() {
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	marketAddr := common.HexToAddress("0xeb389e2796E081FBb5C032F3D307CD5E6b438D78")
+	// marketAddr := common.HexToAddress("0xE78E9e25d52369ea12Ec7964Cc399B0D1BB390FB")
 
 	// deploySwivel(auth, client, marketAddr)
-	// swivelAddr := common.HexToAddress("0xDe9a819630094dF6dA6FF7CCc77E04Fd3ad0ACFE")
+	// swivelAddr := common.HexToAddress("0x8e7bFA3106c0544b6468833c0EB41c350b50A5CA")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
 	// NOTE be sure to set the correct number of decimals for the market (zctoken) you are creating (18 dai, 6 usdc)
-	createMarket(auth, client, marketAddr, uint8(6))
+	// createMarket(auth, client, marketAddr, uint8(18))
 }
