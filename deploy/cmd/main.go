@@ -15,20 +15,11 @@ import (
 )
 
 func main() {
-	// rinkeby chainid
+	// rinkeby chainid, obvs mainnet is 1...
 	chainId := big.NewInt(4)
 
-	// rinkeby infura
-	// client, err := ethclient.Dial(fmt.Sprintf("https://rinkeby.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
-
-	// rinkeby quicknode
-	client, err := ethclient.Dial("https://red-icy-surf.rinkeby.quiknode.pro/0cbdd13f2a541b199f1fb70ecc0481d9c452ae01/")
-
-	// goerli
-	// client, err := ethclient.Dial(fmt.Sprintf("https://goerli.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
-
-	// kovan
-	// client, err := ethclient.Dial(fmt.Sprintf("https://kovan.infura.io/v3/%s", os.Getenv("INFURA_PROJECT_ID")))
+	// whichever fully qualified url your probject uses to establish connection to your node...
+	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
 
 	if err != nil {
 		log.Fatal(err)
@@ -81,10 +72,10 @@ func main() {
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	// marketAddr := common.HexToAddress("0x9fa54f942D8b8e992501952C3e6E67F1A42595b8")
+	// marketAddr := common.HexToAddress("")
 
 	// deploySwivel(auth, client, marketAddr)
-	// swivelAddr := common.HexToAddress("0x4ccD4C002216f08218EdE1B13621faa80CecfC98")
+	// swivelAddr := common.HexToAddress("")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
