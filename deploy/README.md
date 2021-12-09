@@ -1,6 +1,6 @@
 # Deploying
 * export a private key, `main.go` expects it as `PRIVATE_KEY` available to `os.Getenv`
-* export an infura project id, `main.go` expects it as `INFURA_PROJECT_ID` available to `os.Getenv`
+* export a URL that `ethclient` can connect with, `main.go` expects it as `CLIENT_URL` available to `os.Getenv`
 * edit cmd/main.go for the `chainId` you want to deploy to
 * `cd cmd && go run main.go`
 

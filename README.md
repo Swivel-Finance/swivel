@@ -12,7 +12,7 @@ The currently deployed *v2* protocol is located here:
 * marketplace/
   * The `.sol`, `.abi` and `.bin` files for MarketPlace.sol and its dependencies
 
-### deployment
+#### deployment
 We use the Geth ABIGEN tool to generate golang bindings for our smart contracts. We use those bindings to deploy the contracts with the
 `deploy` project in this repo. see `/deploy/cmd/main.go` for the script itself or `/deploy/internal/*` to view the bindings themselves.
 

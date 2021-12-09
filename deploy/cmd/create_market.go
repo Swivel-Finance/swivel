@@ -25,16 +25,16 @@ func createMarket(a *bind.TransactOpts, c *ethclient.Client, m common.Address, d
 		log.Fatal(err)
 	}
 
-	// ******************* DAI **********************************************
+	// ******************* RINKEBY DAI **********************************************
 	cTokenAddr := common.HexToAddress("0x6d7f0754ffeb405d23c51ce938289d4835be3b14")
 	// maturity - 9/1/22
 	maturity := big.NewInt(1662089767)
 	name := "DAI-1662089767"
 	symbol := "zcDAI"
 
-	// ******************* USDC *********************************************
+	// ******************* RINKEBY USDC *********************************************
 	// cTokenAddr := common.HexToAddress("0x5b281a6dda0b271e91ae35de655ad301c976edb1")
-	// maturity - 9/31/21
+	// maturity - <>
 	// maturity := big.NewInt(1633059407)
 	// name := "USDC-1633059407"
 	// symbol := "zcUSDC"
