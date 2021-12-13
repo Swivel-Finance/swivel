@@ -68,6 +68,7 @@ func main() {
 		   a. update swivel address var
 		3. set swivel address in deployed marketplace
 		4. create any desired markets
+		5. deploy a destributor if desired
 	*/
 
 	// TODO we dont return the address here as we don't try to chain them atm
@@ -80,4 +81,6 @@ func main() {
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
 	// createMarket(auth, client, marketAddr)
+
+	deployDestributor(auth, client)
 }
