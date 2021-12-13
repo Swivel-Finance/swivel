@@ -82,5 +82,5 @@ func main() {
 
 	// createMarket(auth, client, marketAddr)
 
-	deployDestributor(auth, client)
+	// deployDestributor(auth, client)
 }
