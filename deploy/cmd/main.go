@@ -15,8 +15,7 @@ import (
 )
 
 func main() {
-	// rinkeby chainid, obvs mainnet is 1...
-	chainId := big.NewInt(4)
+	chainId := big.NewInt(42)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -73,10 +72,10 @@ func main() {
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	// marketAddr := common.HexToAddress("")
+	// marketAddr := common.HexToAddress("0xE7601e3FCB9bD0e948554F59DffC9D428E5091d4")
 
 	// deploySwivel(auth, client, marketAddr)
-	// swivelAddr := common.HexToAddress("")
+	// swivelAddr := common.HexToAddress("0x301292f76885b5a20c7dbd0e06F093E9D4e5fA3F")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
