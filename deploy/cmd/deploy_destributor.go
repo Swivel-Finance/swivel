@@ -15,9 +15,9 @@ func deployDestributor(a *bind.TransactOpts, c *ethclient.Client) {
 	fmt.Println("Deploying Destributor...")
 
 	// current sviw token...
-	token := common.HexToAddress("0x46378144d3f9a2a61470e10cbddcd4d933b96f94")
-	// latest initial merkle root
-	byteRoot := common.FromHex("0x22f89e6494aca95b9e00cd0897af1784c2cddd80e092d0fa5d54cb4297894002")
+	token := common.HexToAddress("0xcee673c316936bfc0d23ac23c325390722ac4717")
+	// latest initial merkle root as empty...
+	byteRoot := common.FromHex("0x0000000000000000000000000000000000000000000000000000000000000000")
 	root := [32]byte{}
 	copy(root[:], byteRoot)
 
