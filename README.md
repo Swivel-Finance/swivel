@@ -24,4 +24,4 @@ We use the Geth ABIGEN tool to generate golang bindings for our smart contracts.
 * Kovan:
   * MarketPlace: 0xE7601e3FCB9bD0e948554F59DffC9D428E5091d4
   * Swivel: 0x301292f76885b5a20c7dbd0e06F093E9D4e5fA3F
-  * Destributor: TBD
+  * Destributor: 0xe59Da40627588136f2b5525797c2789162C86b29
