@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
-	// "fmt"
+	"fmt"
 	"log"
 	"math/big"
 	"os"
@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	chainId := big.NewInt(42)
+	chainId := big.NewInt(1)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -41,10 +41,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Printf("Current Nonce: %v\n", nonce)
+
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Printf("Gas estimate: %v\n", gasPrice)
+	fmt.Println("Attempting to use 100 gwei as gas price")
 
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainId)
 	if err != nil {
@@ -54,8 +59,10 @@ func main() {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)      // in wei
 	auth.GasLimit = uint64(8000000) // let's see if 8 mill will go...
-	// auth.GasPrice = gasPrice.Mul(gasPrice, big.NewInt(2))
+	// auth.GasPrice = big.NewInt(100000000000) // if u wanna just hardcode it - use gwei
 	auth.GasPrice = gasPrice
+
+	fmt.Printf("Transaction options: %v\n", auth)
 
 	/*
 		We simply turn these steps on and off by commenting them.
@@ -72,10 +79,10 @@ func main() {
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	// marketAddr := common.HexToAddress("0xE7601e3FCB9bD0e948554F59DffC9D428E5091d4")
+	// marketAddr := common.HexToAddress("0x998689650D4d55822b4bDd4B7DB5F596bf6b3570")
 
 	// deploySwivel(auth, client, marketAddr)
-	// swivelAddr := common.HexToAddress("0x301292f76885b5a20c7dbd0e06F093E9D4e5fA3F")
+	// swivelAddr := common.HexToAddress("0x3b983B701406010866bD68331aAed374fb9f50C9")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
