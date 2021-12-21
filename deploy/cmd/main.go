@@ -49,7 +49,7 @@ func main() {
 	}
 
 	fmt.Printf("Gas estimate: %v\n", gasPrice)
-	fmt.Println("Attempting to use 100 gwei as gas price")
+	// fmt.Println("Attempting to use 70 gwei as gas price")
 
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainId)
 	if err != nil {
@@ -59,10 +59,13 @@ func main() {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)      // in wei
 	auth.GasLimit = uint64(8000000) // let's see if 8 mill will go...
-	// auth.GasPrice = big.NewInt(100000000000) // if u wanna just hardcode it - use gwei
-	auth.GasPrice = gasPrice
+	// auth.GasPrice = big.NewInt(70000000000) // if u wanna just hardcode it - use gwei
+	auth.GasPrice = gasPrice // let geth estimate
 
 	fmt.Printf("Transaction options: %v\n", auth)
+
+	// if transferring admin, address here...
+	// admin := common.HexToAddress("")
 
 	/*
 		We simply turn these steps on and off by commenting them.
@@ -75,6 +78,7 @@ func main() {
 		3. set swivel address in deployed marketplace
 		4. create any desired markets
 		5. deploy a destributor if desired
+		6. Transfer admin in contracts if desired
 	*/
 
 	// TODO we dont return the address here as we don't try to chain them atm
@@ -89,4 +93,8 @@ func main() {
 	// createMarket(auth, client, marketAddr)
 
 	// deployDestributor(auth, client)
+
+	// transferAdminMarketplace(auth, client, marketAddr, admin)
+
+	// transferAdminSwivel(auth, client, swivelAddr, admin)
 }
