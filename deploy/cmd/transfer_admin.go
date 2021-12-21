@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/swivel-finance/swivel/deploy/internal/destributor"
 	"github.com/swivel-finance/swivel/deploy/internal/marketplace"
 	"github.com/swivel-finance/swivel/deploy/internal/swivel"
 )
@@ -52,6 +53,30 @@ func transferAdminSwivel(a *bind.TransactOpts, c *ethclient.Client, s common.Add
 	}
 
 	tx, err := swivelCont.TransferAdmin(opts, p)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Transaction hash: %v\n", tx.Hash().Hex())
+}
+
+// @param d Address of the deployed Destributor contract
+// @param p Address (public key) of the new admin
+func transferAdminDestributor(a *bind.TransactOpts, c *ethclient.Client, d common.Address, p common.Address) {
+	opts := &bind.TransactOpts{
+		From:   a.From,
+		Signer: a.Signer,
+	}
+
+	fmt.Println("Transferring admin in Destributor...")
+
+	// get the deployed contract...
+	destributorCont, err := destributor.NewDestributor(d, c)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tx, err := destributorCont.TransferAdmin(opts, p)
 	if err != nil {
 		log.Fatal(err)
 	}
