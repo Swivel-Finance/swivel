@@ -13,7 +13,7 @@ contract Destributor {
   uint256 public distribution;
 
   address public immutable token;
-  address public immutable admin;
+  address public admin;
   bool public paused;
 
   event Distribute(bytes32 merkleRoot, uint256 distribution);
@@ -96,6 +96,13 @@ contract Destributor {
     require(Erc20(token).transfer(o, a), 'transfer failed.');
 
     emit Claim(i, o, a);
+
+    return true;
+  }
+
+  /// @param a Address of a new admin
+  function transferAdmin(address a) external authorized(admin) returns (bool) {
+    admin = a;
 
     return true;
   }

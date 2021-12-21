@@ -59,13 +59,13 @@ func main() {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)      // in wei
 	auth.GasLimit = uint64(8000000) // let's see if 8 mill will go...
-	// auth.GasPrice = big.NewInt(70000000000) // if u wanna just hardcode it - use gwei
+	// auth.GasPrice = big.NewInt(60000000000) // if u wanna just hardcode it - use gwei
 	auth.GasPrice = gasPrice // let geth estimate
 
 	fmt.Printf("Transaction options: %v\n", auth)
 
 	// if transferring admin, address here...
-	// admin := common.HexToAddress("")
+	// admin := common.HexToAddress(os.Getenv("ADMIN"))
 
 	/*
 		We simply turn these steps on and off by commenting them.
@@ -93,8 +93,11 @@ func main() {
 	// createMarket(auth, client, marketAddr)
 
 	// deployDestributor(auth, client)
+	// destributorAddr := common.HexToAddress("0x40CbFf2619b72f1F8e788fb7792142BA58bdc27C")
 
 	// transferAdminMarketplace(auth, client, marketAddr, admin)
 
 	// transferAdminSwivel(auth, client, swivelAddr, admin)
+
+	// transferAdminDestributor(auth, client, destributorAddr, admin)
 }
