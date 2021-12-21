@@ -90,7 +90,7 @@ func main() {
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
-	// createMarket(auth, client,rketAddr)
+	// createMarket(auth, client, marketAddr)
 
 	// deployDestributor(auth, client)
 	// destributorAddr := common.HexToAddress("0x40CbFf2619b72f1F8e788fb7792142BA58bdc27C")
