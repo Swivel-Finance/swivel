@@ -9,13 +9,12 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	// "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 func main() {
-	chainId := big.NewInt(1)
+	chainId := big.NewInt(4)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -83,17 +82,17 @@ func main() {
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	// marketAddr := common.HexToAddress("0x998689650D4d55822b4bDd4B7DB5F596bf6b3570")
+	// marketAddr := common.HexToAddress("0xb029e31C252549B20a8dc502c2832F11A2EDE417")
 
 	// deploySwivel(auth, client, marketAddr)
-	// swivelAddr := common.HexToAddress("0x3b983B701406010866bD68331aAed374fb9f50C9")
+	// swivelAddr := common.HexToAddress("0x3a09584FF42CDFe27Fe72Da0533bba24E9C28AaD")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
 	// createMarket(auth, client, marketAddr)
 
 	// deployDestributor(auth, client)
-	// destributorAddr := common.HexToAddress("0x40CbFf2619b72f1F8e788fb7792142BA58bdc27C")
+	// destributorAddr := common.HexToAddress("")
 
 	// transferAdminMarketplace(auth, client, marketAddr, admin)
 
