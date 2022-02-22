@@ -78,6 +78,7 @@ func main() {
 		4. create any desired markets
 		5. deploy a destributor if desired
 		6. Transfer admin in contracts if desired
+		7. delploy a mock rari token
 	*/
 
 	// TODO we dont return the address here as we don't try to chain them atm
@@ -99,4 +100,6 @@ func main() {
 	// transferAdminSwivel(auth, client, swivelAddr, admin)
 
 	// transferAdminDestributor(auth, client, destributorAddr, admin)
+
+	// deployFErc20(auth, client)
 }
