@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	chainId := big.NewInt(4)
+	chainId := big.NewInt(1)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -92,7 +92,7 @@ func main() {
 	// createMarket(auth, client, marketAddr)
 
 	// deployDestributor(auth, client)
-	// destributorAddr := common.HexToAddress("")
+	// destributorAddr := common.HexToAddress("0x57E18D9F50F3Fd0894c8436BC84D2f523A8d0968")
 
 	// transferAdminMarketplace(auth, client, marketAddr, admin)
 

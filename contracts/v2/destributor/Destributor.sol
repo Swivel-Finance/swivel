@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.8.4;
+pragma solidity 0.8.13;
 
 import './Interfaces.sol';
 import './MerkleProof.sol';
@@ -64,8 +64,6 @@ contract Destributor {
   /// @param i An index which to construct a possible claim from
   /// @param d The distribution to check for a claim
   function claimed(uint256 i, uint256 d) public view returns (bool) {
-    require(i > 0, 'passed index must be > 0');
-
     uint256 wordIndex = i / 256;
     uint256 bitIndex = i % 256;
     uint256 word = claims[d][wordIndex];
