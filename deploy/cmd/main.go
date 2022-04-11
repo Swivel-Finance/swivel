@@ -9,12 +9,13 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 func main() {
-	chainId := big.NewInt(4)
+	chainId := big.NewInt(1)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -64,7 +65,7 @@ func main() {
 	fmt.Printf("Transaction options: %v\n", auth)
 
 	// if transferring admin, address here...
-	// admin := common.HexToAddress(os.Getenv("ADMIN"))
+	admin := common.HexToAddress(os.Getenv("ADMIN"))
 
 	/*
 		We simply turn these steps on and off by commenting them.
@@ -92,11 +93,11 @@ func main() {
 	// createMarket(auth, client, marketAddr)
 
 	// deployDestributor(auth, client)
-	// destributorAddr := common.HexToAddress("")
+	destributorAddr := common.HexToAddress("0x57E18D9F50F3Fd0894c8436BC84D2f523A8d0968")
 
 	// transferAdminMarketplace(auth, client, marketAddr, admin)
 
 	// transferAdminSwivel(auth, client, swivelAddr, admin)
 
-	// transferAdminDestributor(auth, client, destributorAddr, admin)
+	transferAdminDestributor(auth, client, destributorAddr, admin)
 }
