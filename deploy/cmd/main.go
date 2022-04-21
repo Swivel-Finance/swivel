@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -80,16 +79,17 @@ func main() {
 		4. create any desired markets
 		5. deploy a destributor if desired
 		6. Transfer admin in contracts if desired
+		7. Deploy a PErc20 token if desired
 	*/
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	marketAddr := common.HexToAddress("0xFFA3fcAB9ed73a526C7621dB73615AaD1e49265B")
+	// marketAddr := common.HexToAddress("0xFFA3fcAB9ed73a526C7621dB73615AaD1e49265B")
 
 	// deploySwivel(auth, client, marketAddr)
-	swivelAddr := common.HexToAddress("0x3C01fb861501428cDc6F067461E8866b0542FAbE")
+	// swivelAddr := common.HexToAddress("0x3C01fb861501428cDc6F067461E8866b0542FAbE")
 
-	setSwivelAddress(auth, client, marketAddr, swivelAddr)
+	//setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
 	// createMarket(auth, client, marketAddr)
 
@@ -101,4 +101,9 @@ func main() {
 	// transferAdminSwivel(auth, client, swivelAddr, admin)
 
 	// transferAdminDestributor(auth, client, destributorAddr, admin)
+
+	name := "Arbitrum Test 2"
+	symbol := "AT2"
+	decimals := uint8(18)
+	deployPErc20(auth, client, name, symbol, decimals)
 }
