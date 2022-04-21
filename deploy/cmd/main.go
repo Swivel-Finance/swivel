@@ -9,12 +9,13 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 func main() {
-	chainId := big.NewInt(1)
+	chainId := big.NewInt(421611)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -56,10 +57,11 @@ func main() {
 	}
 
 	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(0)      // in wei
-	auth.GasLimit = uint64(8000000) // let's see if 8 mill will go...
-	// auth.GasPrice = big.NewInt(60000000000) // if u wanna just hardcode it - use gwei
+	auth.Value = big.NewInt(0)          // in wei
+	auth.GasLimit = uint64(80000000000) // let's see if 8 mill will go...
+	//auth.GasPrice = big.NewInt(10000000) // if u wanna just hardcode it - use gwei
 	auth.GasPrice = gasPrice // let geth estimate
+	fmt.Printf("Using gas price: %v\n", gasPrice)
 
 	fmt.Printf("Transaction options: %v\n", auth)
 
@@ -82,12 +84,12 @@ func main() {
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	// marketAddr := common.HexToAddress("0xb029e31C252549B20a8dc502c2832F11A2EDE417")
+	marketAddr := common.HexToAddress("0xFFA3fcAB9ed73a526C7621dB73615AaD1e49265B")
 
 	// deploySwivel(auth, client, marketAddr)
-	// swivelAddr := common.HexToAddress("0x3a09584FF42CDFe27Fe72Da0533bba24E9C28AaD")
+	swivelAddr := common.HexToAddress("0x3C01fb861501428cDc6F067461E8866b0542FAbE")
 
-	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
+	setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
 	// createMarket(auth, client, marketAddr)
 
