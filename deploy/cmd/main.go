@@ -14,7 +14,8 @@ import (
 )
 
 func main() {
-	chainId := big.NewInt(421611)
+	// arbitrum rinkeby chain ID is 421611
+	chainId := big.NewInt(1)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -102,8 +103,8 @@ func main() {
 
 	// transferAdminDestributor(auth, client, destributorAddr, admin)
 
-	name := "Arbitrum Test 2"
-	symbol := "AT2"
-	decimals := uint8(18)
-	deployPErc20(auth, client, name, symbol, decimals)
+	// name := "Arbitrum Test 2"
+	// symbol := "AT2"
+	// decimals := uint8(18)
+	// deployPErc20(auth, client, name, symbol, decimals)
 }

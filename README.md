@@ -28,7 +28,7 @@ We use the Geth ABIGEN tool to generate golang bindings for our smart contracts.
 * Rinkeby (Arbitrum):
   * MarketPlace: 0xFFA3fcAB9ed73a526C7621dB73615AaD1e49265B
   * Swivel: 0x3C01fb861501428cDc6F067461E8866b0542FAbE
-  * Destributor: 
+  * Destributor: 0xa80De8E1835E01218F71a70F05d54aAe490c6138
 * Rinkeby PErc20 Token:
   * AT1: 0xB54089ff58c266580f6D8398B8A2D8BCA0F49361
   * AT2: 0xD1a85F620c6B3E844634DFF021fd7a7F95AFbe9B
