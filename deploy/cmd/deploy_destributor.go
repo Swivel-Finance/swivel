@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+
 	// "math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -15,6 +16,7 @@ func deployDestributor(a *bind.TransactOpts, c *ethclient.Client) {
 	fmt.Println("Deploying Destributor...")
 
 	// current swiv token...
+	// rinkeby arbitrum token: 0x2d492067eBBd492EC8Ed3C3BfCa1d6c5C9C06531
 	token := common.HexToAddress("0xbf30461210b37012783957D90dC26B95Ce3b6f2d")
 	// initial merkle root as empty...
 	byteRoot := common.FromHex("0x0000000000000000000000000000000000000000000000000000000000000000")
