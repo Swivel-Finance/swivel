@@ -10,10 +10,10 @@ import (
 	"github.com/swivel-finance/swivel/deploy/internal/swivel"
 )
 
-func deploySwivel(a *bind.TransactOpts, c *ethclient.Client, m common.Address) {
+func deploySwivel(a *bind.TransactOpts, c *ethclient.Client, m common.Address, v common.Address) {
 	fmt.Println("Deploying Swivel...")
 
-	swivelAddr, tx, _, err := swivel.DeploySwivel(a, c, m)
+	swivelAddr, tx, _, err := swivel.DeploySwivel(a, c, m, v)
 	if err != nil {
 		log.Fatal(err)
 	}
