@@ -17,6 +17,9 @@ We use the Geth ABIGEN tool to generate golang bindings for our smart contracts.
 `deploy` project in this repo. see `/deploy/cmd/main.go` for the script itself or `/deploy/internal/*` to view the bindings themselves.
 
 ## current deployments
+* Rinkeby (hotfix): 
+  * MarketPlace: 0x65219fe63474390342E2280F596a3Ce06932062b
+  * Swivel: 0xA17A04257f6793b2785D9d16206DCD9142B95Da4
 * Rinkeby (staging):
   * MarketPlace: 0xb029e31C252549B20a8dc502c2832F11A2EDE417
   * Swivel: 0x3a09584FF42CDFe27Fe72Da0533bba24E9C28AaD

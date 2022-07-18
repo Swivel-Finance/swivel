@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.8.4;
+pragma solidity >= 0.8.4;
 
 import './Interfaces.sol';
 import './Hash.sol';
@@ -43,9 +43,10 @@ contract Swivel {
   event SetFee(uint256 indexed index, uint256 indexed feenominator);
 
   /// @param m deployed MarketPlace contract address
-  constructor(address m) {
+  /// @param v deployed contract address used as verifier
+  constructor(address m, address v) {
     admin = msg.sender;
-    domain = Hash.domain(NAME, VERSION, block.chainid, address(this));
+    domain = Hash.domain(NAME, VERSION, block.chainid, v);
     marketPlace = m;
     feenominators = [200, 600, 400, 200];
   }
@@ -252,7 +253,7 @@ contract Swivel {
 
     // transfer fee in underlying to swivel
     uint256 fee = principalFilled / feenominators[1];
-    Safe.transferFrom(uToken, o.maker, address(this), fee);
+    Safe.transferFrom(uToken, msg.sender, address(this), fee);
 
     // alert marketplace
     require(MarketPlace(marketPlace).p2pZcTokenExchange(o.underlying, o.maturity, msg.sender, o.maker, principalFilled), 'zcToken exchange failed');
@@ -501,6 +502,20 @@ contract Swivel {
     require(CErc20(mPlace.cTokenAddress(u, m)).redeemUnderlying(redeemed) == 0, 'compound redemption failed');
     // transfer underlying back to msg.sender
     Safe.transfer(Erc20(u), msg.sender, redeemed);
+
+    return true;
+  }
+
+  /// @notice Allows Swivel to redeem any currently accrued interest (via MarketPlace)
+  /// @param u Underlying token address associated with the market
+  /// @param m Maturity timestamp of the market
+  function redeemSwivelVaultInterest(address u, uint256 m) external returns (bool) {
+    MarketPlace mPlace = MarketPlace(marketPlace);
+    // call marketplace to determine the amount redeemed
+    uint256 redeemed = mPlace.redeemVaultInterest(u, m, address(this));
+    // redeem underlying from compound
+    require(CErc20(mPlace.cTokenAddress(u, m)).redeemUnderlying(redeemed) == 0, 'compound redemption failed');
+    // NOTE: for swivel redeem there is no transfer out as there is in redeemVaultInterest
 
     return true;
   }

@@ -15,7 +15,7 @@ import (
 
 func main() {
 	// arbitrum rinkeby chain ID is 421611
-	chainId := big.NewInt(1)
+	chainId := big.NewInt(4)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -57,8 +57,8 @@ func main() {
 	}
 
 	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(0)          // in wei
-	auth.GasLimit = uint64(80000000000) // let's see if 8 mill will go...
+	auth.Value = big.NewInt(0)      // in wei
+	auth.GasLimit = uint64(8000000) // let's see if 8 mill will go...
 	//auth.GasPrice = big.NewInt(10000000) // if u wanna just hardcode it - use gwei
 	auth.GasPrice = gasPrice // let geth estimate
 	fmt.Printf("Using gas price: %v\n", gasPrice)
@@ -85,12 +85,13 @@ func main() {
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	// marketAddr := common.HexToAddress("0xFFA3fcAB9ed73a526C7621dB73615AaD1e49265B")
+	// marketAddr := common.HexToAddress("0x65219fe63474390342E2280F596a3Ce06932062b")
 
-	// deploySwivel(auth, client, marketAddr)
-	// swivelAddr := common.HexToAddress("0x3C01fb861501428cDc6F067461E8866b0542FAbE")
+	// using the swivel rinkeby (Development) env for the verifier so the sigs match...
+	// deploySwivel(auth, client, marketAddr, common.HexToAddress("0x4ccD4C002216f08218EdE1B13621faa80CecfC98"))
+	// swivelAddr := common.HexToAddress("0xA17A04257f6793b2785D9d16206DCD9142B95Da4")
 
-	//setSwivelAddress(auth, client, marketAddr, swivelAddr)
+	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
 	// createMarket(auth, client, marketAddr)
 
