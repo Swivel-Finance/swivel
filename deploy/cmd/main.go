@@ -15,7 +15,7 @@ import (
 
 func main() {
 	// arbitrum rinkeby chain ID is 421611
-	chainId := big.NewInt(4)
+	chainId := big.NewInt(1)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -65,7 +65,7 @@ func main() {
 
 	fmt.Printf("Transaction options: %v\n", auth)
 
-	// if transferring admin, address here...
+	// if transferring admin, address fetched from shell here...
 	// admin := common.HexToAddress(os.Getenv("ADMIN"))
 
 	/*
@@ -85,11 +85,11 @@ func main() {
 
 	// TODO we dont return the address here as we don't try to chain them atm
 	// deployMarketplace(auth, client)
-	// marketAddr := common.HexToAddress("0x65219fe63474390342E2280F596a3Ce06932062b")
+	// marketAddr := common.HexToAddress("0x76A3F123c651CbE62c80dB5FE2539fb755DAfDCe")
 
-	// using the swivel rinkeby (Development) env for the verifier so the sigs match...
-	// deploySwivel(auth, client, marketAddr, common.HexToAddress("0x4ccD4C002216f08218EdE1B13621faa80CecfC98"))
-	// swivelAddr := common.HexToAddress("0xA17A04257f6793b2785D9d16206DCD9142B95Da4")
+	// using the swivel mainnet (Production) env for the verifier so the sigs match...
+	// deploySwivel(auth, client, marketAddr, common.HexToAddress("0x3b983B701406010866bD68331aAed374fb9f50C9"))
+	// swivelAddr := common.HexToAddress("0x093e4D20D9b2c3c8f68E8a20262D8Fb8EBCE08FA")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
