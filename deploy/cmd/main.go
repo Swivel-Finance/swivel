@@ -15,7 +15,8 @@ import (
 
 func main() {
 	// arbitrum rinkeby chain ID is 421611
-	chainId := big.NewInt(42)
+	// goerli chain ID is 5
+	chainId := big.NewInt(5)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -92,8 +93,10 @@ func main() {
 	// deployMarketplace(auth, client, creatorAddr)
 	// marketAddr := common.HexToAddress("")
 
+	// setMarketPlaceAddress(auth, client, creatorAddr, marketAddr)
+
 	// TODO we'll need to pass an Aave address here if we want it to work...
-	// deploySwivel(auth, client, marketAddr, common.HexToAddress("0x0"))
+	// deploySwivel(auth, client, marketAddr, common.HexToAddress("0xAAVE"))
 	// swivelAddr := common.HexToAddress("")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
