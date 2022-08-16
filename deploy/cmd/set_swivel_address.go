@@ -24,7 +24,7 @@ func setSwivelAddress(a *bind.TransactOpts, c *ethclient.Client, m common.Addres
 		log.Fatal(err)
 	}
 
-	tx, err := marketCont.SetSwivelAddress(opts, s)
+	tx, err := marketCont.SetSwivel(opts, s)
 	if err != nil {
 		log.Fatal(err)
 	}

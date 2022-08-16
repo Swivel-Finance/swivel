@@ -15,7 +15,7 @@ import (
 
 func main() {
 	// arbitrum rinkeby chain ID is 421611
-	chainId := big.NewInt(1)
+	chainId := big.NewInt(42)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -72,24 +72,29 @@ func main() {
 		We simply turn these steps on and off by commenting them.
 		TODO we _could_ automate it by waiting for receipts etc...
 
-		1. deploy marketplace
+		1. deploy creator
+			 a. update creator address var
+		2. deploy marketplace
 		   a. update marketplace address var
-		2. deploy swivel
+		3. set marketplace address in creator
+		4. deploy swivel
 		   a. update swivel address var
-		3. set swivel address in deployed marketplace
-		4. create any desired markets
-		5. deploy a destributor if desired
-		6. Transfer admin in contracts if desired
-		7. Deploy a PErc20 token if desired
+		5. set swivel address in deployed marketplace
+		6. create any desired markets
+		7. deploy a destributor if desired
+		8. Transfer admin in contracts if desired
+		9. Deploy a PErc20 token if desired
 	*/
 
-	// TODO we dont return the address here as we don't try to chain them atm
-	// deployMarketplace(auth, client)
-	// marketAddr := common.HexToAddress("0x76A3F123c651CbE62c80dB5FE2539fb755DAfDCe")
+	// deployCreator(auth, client)
+	// creatorAddr := common.HexToAddress("")
 
-	// using the swivel mainnet (Production) env for the verifier so the sigs match...
-	// deploySwivel(auth, client, marketAddr, common.HexToAddress("0x3b983B701406010866bD68331aAed374fb9f50C9"))
-	// swivelAddr := common.HexToAddress("0x093e4D20D9b2c3c8f68E8a20262D8Fb8EBCE08FA")
+	// deployMarketplace(auth, client, creatorAddr)
+	// marketAddr := common.HexToAddress("")
+
+	// TODO we'll need to pass an Aave address here if we want it to work...
+	// deploySwivel(auth, client, marketAddr, common.HexToAddress("0x0"))
+	// swivelAddr := common.HexToAddress("")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
