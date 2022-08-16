@@ -28,7 +28,7 @@ func transferAdminMarketplace(a *bind.TransactOpts, c *ethclient.Client, m commo
 		log.Fatal(err)
 	}
 
-	tx, err := marketCont.TransferAdmin(opts, p)
+	tx, err := marketCont.SetAdmin(opts, p)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func transferAdminSwivel(a *bind.TransactOpts, c *ethclient.Client, s common.Add
 		log.Fatal(err)
 	}
 
-	tx, err := swivelCont.TransferAdmin(opts, p)
+	tx, err := swivelCont.SetAdmin(opts, p)
 	if err != nil {
 		log.Fatal(err)
 	}
