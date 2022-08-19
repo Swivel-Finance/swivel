@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -16,7 +17,7 @@ import (
 func main() {
 	// arbitrum rinkeby chain ID is 421611
 	// goerli chain ID is 5
-	chainId := big.NewInt(5)
+	chainId := big.NewInt(1)
 
 	// whichever fully qualified url your probject uses to establish connection to your node...
 	client, err := ethclient.Dial(os.Getenv("CLIENT_URL"))
@@ -91,13 +92,13 @@ func main() {
 	// creatorAddr := common.HexToAddress("")
 
 	// deployMarketplace(auth, client, creatorAddr)
-	// marketAddr := common.HexToAddress("")
+	marketAddr := common.HexToAddress("0xD3ca4c8Da849B81C4036c67AA81a20d8d551b3A5")
 
 	// setMarketPlaceAddress(auth, client, creatorAddr, marketAddr)
 
 	// TODO we'll need to pass an Aave address here if we want it to work...
 	// deploySwivel(auth, client, marketAddr, common.HexToAddress("0xAAVE"))
-	// swivelAddr := common.HexToAddress("")
+	swivelAddr := common.HexToAddress("0x3c01fb861501428cdc6f067461e8866b0542fabe")
 
 	// setSwivelAddress(auth, client, marketAddr, swivelAddr)
 
@@ -116,4 +117,12 @@ func main() {
 	// symbol := "AT2"
 	// decimals := uint8(18)
 	// deployPErc20(auth, client, name, symbol, decimals)
+
+	/*
+		The following exists to query tenderly mainnet forks we may be running...
+		blah blah
+	*/
+
+	querySwivelPublicFields(client, swivelAddr)
+	queryMarketPlacePublicFields(client, marketAddr)
 }
