@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.13;
+pragma solidity 0.8.16;
 
 import './Interfaces.sol';
 import './Compounding.sol';
@@ -63,12 +63,13 @@ contract MarketPlace is IMarketPlace {
   /// @param m Maturity timestamp of the new market
   /// @param c Compounding Token address associated with the new market
   /// @param n Name of the new market zcToken
+  /// @dev the memory allocation of `s` is for alleviating STD err, there's no clearly superior scoping or abstracting alternative.
   /// @param s Symbol of the new market zcToken
   function createMarket(
     uint8 p,
     uint256 m,
     address c,
-    string memory n,
+    string calldata n,
     string memory s
   ) external authorized(admin) unpaused(p) returns (bool) {
     if (swivel == address(0)) {

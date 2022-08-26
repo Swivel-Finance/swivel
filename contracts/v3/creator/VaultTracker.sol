@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.13;
+pragma solidity 0.8.16;
 
 import './Interfaces.sol';
 import './Compounding.sol';
@@ -60,8 +60,8 @@ contract VaultTracker is IVaultTracker {
       uint256 yield = ((mRate * 1e26) / vlt.exchangeRate) - 1e26;
       uint256 interest = (yield * (vlt.notional + vlt.redeemable)) / 1e26;
       // add interest and amount to position, reset cToken exchange rate
-      vlt.redeemable += interest;
-      vlt.notional += a;
+      vlt.redeemable = vlt.redeemable + interest;
+      vlt.notional = vlt.notional + a;
     } else {
       vlt.notional = a;
     }
@@ -80,8 +80,8 @@ contract VaultTracker is IVaultTracker {
 
     Vault memory vlt = vaults[o];
 
-    if (a >= vlt.notional) {
-      revert Exception(31, a, vlt.notional, address(0), address(0));
+    if (a > vlt.notional) {
+      revert Exception(31, a, vlt.notional, o, address(0));
     }
 
     // note that mRate is is maturityRate if > 0, exchangeRate otherwise
@@ -92,8 +92,8 @@ contract VaultTracker is IVaultTracker {
     uint256 yield = ((mRate * 1e26) / vlt.exchangeRate) - 1e26;
     uint256 interest = (yield * (vlt.notional + vlt.redeemable)) / 1e26;
     // remove amount from position, Add interest to position, reset cToken exchange rate
-    vlt.redeemable += interest;
-    vlt.notional -= a;
+    vlt.redeemable = vlt.redeemable + interest;
+    vlt.notional = vlt.notional - a;
     // set vault's exchange rate to the lower of (maturityRate, exchangeRate) if vault has matured, otherwise exchangeRate
     vlt.exchangeRate = maturityRate < xRate ? mRate : xRate;
     vaults[o] = vlt;
@@ -118,12 +118,12 @@ contract VaultTracker is IVaultTracker {
     uint256 interest = (yield * (vlt.notional + vlt.redeemable)) / 1e26;
 
     vlt.exchangeRate = mRate < xRate ? mRate : xRate;
-    vlt.redeemable = 0;
+    delete vlt.redeemable;
 
     vaults[o] = vlt;
 
     // return adds marginal interest to previously accrued redeemable interest
-    return (redeemable + interest);
+    return redeemable + interest;
   }
 
   /// @notice Matures the vault
@@ -145,8 +145,8 @@ contract VaultTracker is IVaultTracker {
     Vault memory from = vaults[f];
     Vault memory to = vaults[t];
 
-    if (a >= from.notional) {
-      revert Exception(31, a, from.notional, address(0), address(0));
+    if (a > from.notional) {
+      revert Exception(31, a, from.notional, f, t);
     }
 
     // note that mRate is is maturityRate if > 0, exchangeRate otherwise
@@ -157,8 +157,8 @@ contract VaultTracker is IVaultTracker {
     uint256 yield = ((mRate * 1e26) / from.exchangeRate) - 1e26;
     uint256 interest = (yield * (from.notional + from.redeemable)) / 1e26;
     // remove amount from position, Add interest to position, reset cToken exchange rate
-    from.redeemable += interest;
-    from.notional -= a;
+    from.redeemable = from.redeemable + interest;
+    from.notional = from.notional - a;
     from.exchangeRate = mRate < xRate ? mRate : xRate;
 
     vaults[f] = from;
@@ -168,8 +168,8 @@ contract VaultTracker is IVaultTracker {
       yield = ((mRate * 1e26) / to.exchangeRate) - 1e26;
       interest = (yield * (to.notional + to.redeemable)) / 1e26;
       // add interest and amount to position, reset cToken exchange rate
-      to.redeemable += interest;
-      to.notional += a;
+      to.redeemable = to.redeemable + interest;
+      to.notional = to.notional + a;
     } else {
       to.notional = a;
     }
@@ -187,8 +187,11 @@ contract VaultTracker is IVaultTracker {
     Vault memory oVault = vaults[f];
     Vault memory sVault = vaults[swivel];
 
+    if (a > oVault.notional) {
+      revert Exception(31, a, oVault.notional, f, address(0));
+    }
     // remove notional from its owner
-    oVault.notional -= a;
+    oVault.notional = oVault.notional - a;
 
     // note that mRate is is maturityRate if > 0, exchangeRate otherwise
     (uint256 mRate, uint256 xRate) = rates();
@@ -200,12 +203,12 @@ contract VaultTracker is IVaultTracker {
       uint256 yield = ((mRate * 1e26) / sVault.exchangeRate) - 1e26;
       uint256 interest = (yield * (sVault.notional + sVault.redeemable)) / 1e26;
       // add interest and amount, reset cToken exchange rate
-      sVault.redeemable += interest;
+      sVault.redeemable = sVault.redeemable + interest;
       // set to maturityRate only if both > 0 && < exchangeRate
       sVault.exchangeRate = (mRate < xRate) ? mRate : xRate;
     }
     // add notional to swivel's vault
-    sVault.notional += a;
+    sVault.notional = sVault.notional + a;
     // store the adjusted vaults
     vaults[swivel] = sVault;
     vaults[f] = oVault;
