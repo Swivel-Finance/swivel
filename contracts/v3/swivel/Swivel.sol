@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0
 
 pragma solidity 0.8.16;
 
@@ -35,8 +35,8 @@ contract Swivel is ISwivel {
   address public immutable aaveAddr;
 
   uint16 constant public MIN_FEENOMINATOR = 33;
-  /// @dev holds the fee demoninators for [zcTokenInitiate, zcTokenExit, vaultInitiate, vaultExit]
-  uint16[4] public feenominators;
+  /// @dev holds the fee denominators for [zcTokenInitiate, zcTokenExit, vaultInitiate, vaultExit]
+  uint16[4] public feenominators = [200, 600, 400, 200];
 
   /// @notice Emitted on order cancellation
   event Cancel (bytes32 indexed key, bytes32 hash);
@@ -53,7 +53,7 @@ contract Swivel is ISwivel {
   /// @notice Emitted on token approval scheduling
   event ScheduleApproval(address indexed token, uint256 hold);
   /// @notice Emitted on fee change scheduling
-  event ScheduleFeeChange(uint256 hold);
+  event ScheduleFeeChange(uint16[4] proposal, uint256 hold);
   /// @notice Emitted on token withdrawal blocking
   event BlockWithdrawal(address indexed token);
   /// @notice Emitted on token approval blocking
@@ -62,6 +62,7 @@ contract Swivel is ISwivel {
   event BlockFeeChange();
   /// @notice Emitted on a change to the fee structure
   event ChangeFee(uint256 indexed index, uint256 indexed value);
+  event SetAdmin(address indexed admin);
 
   /// @param m Deployed MarketPlace contract address
   /// @param a Address of a deployed Aave contract implementing our interface
@@ -70,7 +71,6 @@ contract Swivel is ISwivel {
     domain = Hash.domain(NAME, VERSION, block.chainid, address(this));
     marketPlace = m;
     aaveAddr = a;
-    feenominators = [200, 600, 400, 200];
   }
 
   // ********* INITIATING *************
@@ -80,18 +80,16 @@ contract Swivel is ISwivel {
   /// @param a Array of order volume (principal) amounts relative to passed orders
   /// @param c Array of Components from valid ECDSA signatures
   function initiate(Hash.Order[] calldata o, uint256[] calldata a, Sig.Components[] calldata c) external returns (bool) {
-    uint256 len = o.length;
     // for each order filled, routes the order to the right interaction depending on its params
-    for (uint256 i; i != len;) {
-      Hash.Order memory order = o[i];
-      if (!order.exit) {
-        if (!order.vault) {
+    for (uint256 i; i != o.length;) {
+      if (!o[i].exit) {
+        if (!o[i].vault) {
           initiateVaultFillingZcTokenInitiate(o[i], a[i], c[i]);
         } else {
           initiateZcTokenFillingVaultInitiate(o[i], a[i], c[i]);
         }
       } else {
-        if (!order.vault) {
+        if (!o[i].vault) {
           initiateZcTokenFillingZcTokenExit(o[i], a[i], c[i]);
         } else {
           initiateVaultFillingVaultExit(o[i], a[i], c[i]);
@@ -265,14 +263,12 @@ contract Swivel is ISwivel {
   /// @param a Array of order volume (principal) amounts relative to passed orders
   /// @param c Components of a valid ECDSA signature
   function exit(Hash.Order[] calldata o, uint256[] calldata a, Sig.Components[] calldata c) external returns (bool) {
-    uint256 len = o.length;
     // for each order filled, routes the order to the right interaction depending on its params
-    for (uint256 i; i != len;) {
-      Hash.Order memory order = o[i];
+    for (uint256 i; i != o.length;) {
       // if the order being filled is not an exit
-      if (!order.exit) {
+      if (!o[i].exit) {
         // if the order being filled is a vault initiate or a zcToken initiate
-          if (!order.vault) {
+          if (!o[i].vault) {
             // if filling a zcToken initiate with an exit, one is exiting zcTokens
             exitZcTokenFillingZcTokenInitiate(o[i], a[i], c[i]);
           } else {
@@ -281,7 +277,7 @@ contract Swivel is ISwivel {
           }
       } else {
         // if the order being filled is a vault exit or a zcToken exit
-        if (!order.vault) {
+        if (!o[i].vault) {
           // if filling a zcToken exit with an exit, one is exiting vault
           exitVaultFillingZcTokenExit(o[i], a[i], c[i]);
         } else {
@@ -444,18 +440,22 @@ contract Swivel is ISwivel {
   }
 
   /// @notice Allows a user to cancel an order, preventing it from being filled in the future
-  /// @param o Order being cancelled
-  /// @param c Components of a valid ECDSA signature
-  function cancel(Hash.Order calldata o, Sig.Components calldata c) external returns (bool) {
-    bytes32 hash = validOrderHash(o, c);
+  /// @param o Array of offline orders being cancelled
+  function cancel(Hash.Order[] calldata o) external returns (bool) {
+    for (uint256 i; i != o.length;) {
+      if (msg.sender != o[i].maker) {
+        revert Exception(15, 0, 0, msg.sender, o[i].maker);
+      }
 
-    if (msg.sender != o.maker) {
-      revert Exception(15, 0, 0, msg.sender, o.maker);
+      bytes32 hash = Hash.order(o[i]); 
+      cancelled[hash] = true;
+
+      emit Cancel(o[i].key, hash);
+
+      unchecked {
+        ++i;
+      }
     }
-
-    cancelled[hash] = true;
-
-    emit Cancel(o.key, hash);
 
     return true;
   }
@@ -465,6 +465,8 @@ contract Swivel is ISwivel {
   /// @param a Address of a new admin
   function setAdmin(address a) external authorized(admin) returns (bool) {
     admin = a;
+
+    emit SetAdmin(a);
 
     return true;
   }
@@ -492,11 +494,12 @@ contract Swivel is ISwivel {
   }
 
   /// @notice allows the admin to schedule a change to the fee denominators
-  function scheduleFeeChange() external authorized(admin) returns (bool) {
+  /// @param f array of length 4 holding values which suggest replacing any at the same index for the current feenominators
+  function scheduleFeeChange(uint16[4] calldata f) external authorized(admin) returns (bool) {
     uint256 when = block.timestamp + HOLD;
     feeChange = when;
 
-    emit ScheduleFeeChange(when);
+    emit ScheduleFeeChange(f, when);
 
     return true;
   }
@@ -589,15 +592,13 @@ contract Swivel is ISwivel {
   /// @param u array of underlying token addresses
   /// @param c array of compound token addresses
   function approveUnderlying(address[] calldata u, address[] calldata c) external authorized(admin) returns (bool) {
-    uint256 len = u.length;
-
-    if (len != c.length) {
-      revert Exception(19, len, c.length, address(0), address(0));
+    if (u.length != c.length) {
+      revert Exception(19, u.length, c.length, address(0), address(0));
     }
 
     uint256 max = type(uint256).max;
 
-    for (uint256 i; i != len;) {
+    for (uint256 i; i != u.length;) {
       uint256 when = approvals[u[i]];
 
       if (when == 0) {
@@ -740,12 +741,12 @@ contract Swivel is ISwivel {
       revert Exception(7, 0, 0, address(0), address(0));
     }
 
-    // NOTE: for swivel reddem there is no transfer out as there is in redeemVaultInterest
+    // NOTE: for swivel redeem there is no transfer out as there is in redeemVaultInterest
 
     return true;
   }
 
-  /// @notice Varifies the validity of an order and it's signature.
+  /// @notice Verifies the validity of an order and it's signature.
   /// @param o An offline Swivel.Order
   /// @param c Components of a valid ECDSA signature
   /// @return the hashed order.
@@ -810,9 +811,11 @@ contract Swivel is ISwivel {
       return ICompound(c).redeemUnderlying(a) == 0;
     } else if (p == uint8(Protocols.Yearn)) {
       // yearn vault api states that withdraw returns uint256
-      return IYearn(c).withdraw(a) >= 0;
+      // NOTE that we must use the price-per-share in Yearn to determine the correct number of underlying assets
+      IYearn vault = IYearn(c);
+      return vault.withdraw(a / vault.pricePerShare()) >= 0;
     } else if (p == uint8(Protocols.Aave)) {
-      // Aave v2 docs state that withraw returns uint256
+      // Aave v2 docs state that withdraw returns uint256
       return IAave(aaveAddr).withdraw(u, a, address(this)) >= 0;
     } else if (p == uint8(Protocols.Euler)) {
       // Euler withdraw is void

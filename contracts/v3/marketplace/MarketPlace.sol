@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0
 
 pragma solidity 0.8.16;
 
@@ -34,6 +34,7 @@ contract MarketPlace is IMarketPlace {
   event P2pZcTokenExchange(uint8 indexed protocol, address indexed underlying, uint256 indexed maturity, address from, address to, uint256 amount);
   event P2pVaultExchange(uint8 indexed protocol, address indexed underlying, uint256 indexed maturity, address from, address to, uint256 amount);
   event TransferVaultNotional(uint8 indexed protocol, address indexed underlying, uint256 indexed maturity, address from, address to, uint256 amount);
+  event SetAdmin(address indexed admin);
 
   /// @param c Address of the deployed creator contract
   constructor(address c) {
@@ -43,6 +44,7 @@ contract MarketPlace is IMarketPlace {
 
   /// @param s Address of the deployed swivel contract
   /// @notice We only allow this to be set once
+  /// @dev there is no emit here as it's only done once post deploy by the deploying admin
   function setSwivel(address s) external authorized(admin) returns (bool) {
     if (swivel != address(0)) {
       revert Exception(20, 0, 0, swivel, address(0)); 
@@ -55,6 +57,9 @@ contract MarketPlace is IMarketPlace {
   /// @param a Address of a new admin
   function setAdmin(address a) external authorized(admin) returns (bool) {
     admin = a;
+    
+    emit SetAdmin(a);
+
     return true;
   }
 
@@ -259,8 +264,7 @@ contract MarketPlace is IMarketPlace {
   /// @param u Underlying token address associated with the market
   /// @param m Maturity timestamp of the market
   function cTokenAddress(uint8 p, address u, uint256 m) external view returns (address) {
-    Market memory market = markets[p][u][m];
-    return market.cTokenAddr;
+    return markets[p][u][m].cTokenAddr;
   }
 
   /// @notice Return the exchange rate for a given protocol's compounding token
@@ -333,12 +337,13 @@ contract MarketPlace is IMarketPlace {
   /// @param t Target to be minted to
   /// @param a Amount of zcToken transfer
   function p2pZcTokenExchange(uint8 p, address u, uint256 m, address f, address t, uint256 a) external authorized(swivel) unpaused(p) returns (bool) {
-    Market memory market = markets[p][u][m];
-    if (!IZcToken(market.zcToken).burn(f, a)) {
+    address zct = markets[p][u][m].zcToken;
+
+    if (!IZcToken(zct).burn(f, a)) {
       revert Exception(29, 0, 0, address(0), address(0));
     }
 
-    if (!IZcToken(market.zcToken).mint(t, a)) {
+    if (!IZcToken(zct).mint(t, a)) {
       revert Exception(28, 0, 0, address(0), address(0));
     }
 
