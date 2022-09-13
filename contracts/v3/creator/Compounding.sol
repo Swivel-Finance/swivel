@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.13;
 
-import './Protocols.sol'; // NOTE: if size restrictions become extreme we can use ints (implicit enum)
+import './Protocols.sol';
 import './LibCompound.sol';
 
 interface IErc4626 {
@@ -43,6 +43,13 @@ interface IEulerToken {
   function underlyingAsset() external view returns(address);
 }
 
+interface ILidoToken {
+  /// @dev The address of the stETH underlying asset
+  function stETH() external view returns (address);
+  /// @notice Returns amount of stETH for one wstETH
+  function stEthPerToken() external view returns (uint256);
+}
+
 library Compounding {
   /// @param p Protocol Enum value
   /// @param c Compounding token address
@@ -55,6 +62,8 @@ library Compounding {
       return IAaveToken(c).UNDERLYING_ASSET_ADDRESS();
     } else if (p == uint8(Protocols.Euler)) {
       return IEulerToken(c).underlyingAsset();
+    } else if (p == uint8(Protocols.Lido)) {
+      return ILidoToken(c).stETH();
     } else {
       return IErc4626(c).asset();      
     }
@@ -63,7 +72,7 @@ library Compounding {
   /// @param p Protocol Enum value
   /// @param c Compounding token address
   function exchangeRate(uint8 p, address c) internal view returns (uint256) {
-      // in contrast to the below, LibCompound provides a lower gas alternative to exchangeRateCurrent()
+    // in contrast to the below, LibCompound provides a lower gas alternative to exchangeRateCurrent()
     if (p == uint8(Protocols.Compound)) {
       return LibCompound.viewExchangeRate(ICERC20(c));
       // with the removal of LibFuse we will direct Rari to the exposed Compound CToken methodology
@@ -77,6 +86,8 @@ library Compounding {
     } else if (p == uint8(Protocols.Euler)) {
       // NOTE: the 1e26 const is a degree of precision to enforce on the return
       return IEulerToken(c).convertBalanceToUnderlying(1e26);
+    } else if (p == uint8(Protocols.Lido)) {
+      return ILidoToken(c).stEthPerToken();
     } else {
       // NOTE: the 1e26 const is a degree of precision to enforce on the return
       return IErc4626(c).convertToAssets(1e26);
