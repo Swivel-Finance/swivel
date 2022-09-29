@@ -2,6 +2,10 @@
 
 Swivel v3 was built using [Foundry](https://book.getfoundry.sh/), a Solidity development toolkit. As such, our tests are provided and can be run using `forge`. This README provides information about running and building the project.
 
+## Bindings
+
+A set of Go bindings and ABIs for the contracts are included in the `bindings` directory.
+
 ## Testing
 
 We use Foundry's fork-mode in our tests. In order to run these tests, a couple environment variables need to be set by the user:
