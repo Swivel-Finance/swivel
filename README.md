@@ -2,8 +2,12 @@
 
 <img src="https://user-images.githubusercontent.com/62613746/111923535-1cddbd00-8a76-11eb-80fa-853acfc789e3.png" width="400px">
 
-## contracts
+## Contracts
 Swivel smart contracts are located here, stored by version. Their associated `abi` and `bin` compilation artifacts are also here for convenience.
+
+### v3
+* The currently deployed *v3* protocol is located in the `src` directory
+* ABIs and bindings can be found in the `bindings` directory
 
 ### v2
 The currently deployed *v2* protocol is located here:
@@ -12,11 +16,20 @@ The currently deployed *v2* protocol is located here:
 * marketplace/
   * The `.sol`, `.abi` and `.bin` files for MarketPlace.sol and its dependencies
 
-#### deployment
-We use the Geth ABIGEN tool to generate golang bindings for our smart contracts. We use those bindings to deploy the contracts with the
-`deploy` project in this repo. see `/deploy/cmd/main.go` for the script itself or `/deploy/internal/*` to view the bindings themselves.
+## Deployments
+We use Foundry to generate the ABIs, and `abigen` to generate Go bindings for each of our source contracts.
 
-## current deployments
+### v3 deployments
+* Goerli
+  * MarketPlace: 0xf06a150e7436ecdd1ccb87114a430d4be0276016
+  * Swivel: 0x8a1070ba463ee4be8e71404282c0d4318fdcd313
+  * Creator: 0xCD62F207eFA351cfebac236d942fFd2cA4D55B52
+* Mainnet
+  * MarketPlace: 0xf13FC4065F3050812D0699fC22976e1bB883d130
+  * Swivel: 0x373a06bD3067f8DA90239a47f316F09312b7800F
+  * Creator: 0xCD62F207eFA351cfebac236d942fFd2cA4D55B52
+
+### v2 deployments
 * Rinkeby (hotfix): 
   * MarketPlace: 0x65219fe63474390342E2280F596a3Ce06932062b
   * Swivel: 0xA17A04257f6793b2785D9d16206DCD9142B95Da4
@@ -42,9 +55,3 @@ We use the Geth ABIGEN tool to generate golang bindings for our smart contracts.
   * MarketPlace: 0x998689650D4d55822b4bDd4B7DB5F596bf6b3570
   * Swivel: 0x3b983B701406010866bD68331aAed374fb9f50C9
   * Destributor: 0x57E18D9F50F3Fd0894c8436BC84D2f523A8d0968 (current version)
-
-## v3 deployments
-* Goerli:
-  * Creator: 0xFFA3fcAB9ed73a526C7621dB73615AaD1e49265B
-  * MarketPlace: 0x3C01fb861501428cDc6F067461E8866b0542FAbE
-  * Swivel: 0xB54089ff58c266580f6D8398B8A2D8BCA0F49361
