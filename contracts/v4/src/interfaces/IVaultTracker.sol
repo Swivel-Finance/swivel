@@ -19,7 +19,7 @@ interface IVaultTracker {
 
     function transferNotionalFee(address, uint256) external returns (bool);
 
-    function rates() external returns (uint256, uint256);
+    function rates() external view returns (uint256, uint256);
 
     function balancesOf(address) external view returns (uint256, uint256);
 

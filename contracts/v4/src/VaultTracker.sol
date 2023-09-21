@@ -285,7 +285,7 @@ contract VaultTracker is IVaultTracker {
     /// @notice Return both the current maturityRate if it's > 0 (or exchangeRate in its place) and the Compounding exchange rate
     /// @dev While it may seem unnecessarily redundant to return the exchangeRate twice, it prevents many kludges that would otherwise be necessary to guard it
     /// @return maturityRate, exchangeRate if maturityRate > 0, exchangeRate, exchangeRate if not.
-    function rates() public returns (uint256, uint256) {
+    function rates() public view returns (uint256, uint256) {
         uint256 exchangeRate = IAdapter(adapter).exchangeRate(cTokenAddr);
         return ((maturityRate > 0 ? maturityRate : exchangeRate), exchangeRate);
     }

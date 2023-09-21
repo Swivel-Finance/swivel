@@ -464,7 +464,7 @@ contract MarketPlace is IMarketPlace {
         uint8 p,
         address u,
         uint256 m
-    ) external returns (uint256, uint256) {
+    ) external view returns (uint256, uint256) {
         return IVaultTracker(markets[p][u][m].vaultTracker).rates();
     }
 
