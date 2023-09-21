@@ -405,6 +405,13 @@ contract MarketPlace is IMarketPlace {
         uint256 interest = IVaultTracker(markets[p][u][m].vaultTracker)
             .redeemInterest(t);
 
+        // if the market has not matured, mature it and redeem exactly the amount
+        if (markets[p][u][m].maturityRate == 0) {
+            if (!matureMarket(p, u, m)) {
+                revert Exception(30, 0, 0, address(0), address(0));
+            }
+        }
+
         emit RedeemVaultInterest(p, u, m, t);
 
         return interest;
