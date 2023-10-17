@@ -19,6 +19,13 @@ The currently deployed *v2* protocol is located here:
 ## Deployments
 We use Foundry to generate the ABIs, and `abigen` to generate Go bindings for each of our source contracts.
 
+### v4 deployments
+* Mainnet:
+  * MarketPlace: 0x3b61ec0556a9e6fe371bc38a74debc3686bd1561 
+  * Swivel: 0xca3b125529a6b19cb5c65e485efbc942b337a64a 
+  * Creator: 0x052be677d4568088024d87c66796b5d064fc7b57 
+  * Lido Adapter: 0x51992cd5cfb9e6da44adc7299c975a36aef5c872 
+
 ### v3 deployments
 * Goerli
   * MarketPlace: 0xf06a150e7436ecdd1ccb87114a430d4be0276016
