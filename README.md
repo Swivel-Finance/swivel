@@ -5,17 +5,6 @@
 ## Contracts
 Swivel smart contracts are located here, stored by version. Their associated `abi` and `bin` compilation artifacts are also here for convenience.
 
-### v3
-* The currently deployed *v3* protocol is located in the `src` directory
-* ABIs and bindings can be found in the `bindings` directory
-
-### v2
-The currently deployed *v2* protocol is located here:
-* swivel/
-  * The `.sol`, `.abi` and `.bin` files for Swivel.sol and its dependencies
-* marketplace/
-  * The `.sol`, `.abi` and `.bin` files for MarketPlace.sol and its dependencies
-
 ## Deployments
 We use Foundry to generate the ABIs, and `abigen` to generate Go bindings for each of our source contracts.
 
